@@ -1,0 +1,61 @@
+[
+  {
+    "id": "leaf_bed",
+    "name": "낙엽 침대",
+    "category": "bed",
+    "theme": "dry_brush",
+    "happiness": 3,
+    "cost": [{ "itemId": "leaf", "amount": 4 }, { "itemId": "grass", "amount": 2 }],
+    "color": "#d49555"
+  },
+  {
+    "id": "shrub_wall",
+    "name": "덤불 벽",
+    "category": "wall",
+    "theme": "dry_brush",
+    "happiness": 3,
+    "cost": [{ "itemId": "grass", "amount": 4 }, { "itemId": "soil", "amount": 2 }],
+    "color": "#738b55"
+  },
+  {
+    "id": "leaf_roof",
+    "name": "낙엽 지붕",
+    "category": "roof",
+    "theme": "dry_brush",
+    "happiness": 4,
+    "cost": [{ "itemId": "leaf", "amount": 6 }, { "itemId": "grass", "amount": 2 }],
+    "color": "#b96f42"
+  },
+  {
+    "id": "dirt_path",
+    "name": "흙 통로",
+    "category": "path",
+    "theme": "dry_brush",
+    "happiness": 1,
+    "cost": [{ "itemId": "soil", "amount": 4 }],
+    "color": "#b7845f"
+  },
+  {
+    "id": "flower_bed",
+    "name": "풀 화단",
+    "category": "flowerbed",
+    "theme": "dry_brush",
+    "happiness": 2,
+    "cost": [
+      { "itemId": "grass", "amount": 3 },
+      { "itemId": "plant_enzyme", "amount": 1 },
+      { "itemId": "seed", "amount": 1 },
+      { "itemId": "flower", "amount": 1 }
+    ],
+    "color": "#94aa62"
+  },
+  {
+    "id": "moss_decor",
+    "name": "이끼 장식",
+    "category": "decor",
+    "theme": "moss",
+    "happiness": 5,
+    "cost": [{ "itemId": "grass", "amount": 4 }, { "itemId": "moss", "amount": 1 }],
+    "color": "#70a77a"
+  }
+]

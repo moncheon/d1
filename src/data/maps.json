@@ -1,0 +1,88 @@
+{
+  "homeSlots": [
+    { "id": "bed-1", "category": "bed", "defaultBuildingId": "leaf_bed", "x": 0, "y": 0 },
+    { "id": "wall-1", "category": "wall", "defaultBuildingId": "shrub_wall", "x": 1, "y": 0 },
+    { "id": "wall-2", "category": "wall", "defaultBuildingId": "shrub_wall", "x": 2, "y": 0 },
+    { "id": "wall-3", "category": "wall", "defaultBuildingId": "shrub_wall", "x": 3, "y": 0 },
+    { "id": "wall-4", "category": "wall", "defaultBuildingId": "shrub_wall", "x": 4, "y": 0 },
+    { "id": "roof-1", "category": "roof", "defaultBuildingId": "leaf_roof", "x": 0, "y": 1 },
+    { "id": "roof-2", "category": "roof", "defaultBuildingId": "leaf_roof", "x": 1, "y": 1 },
+    { "id": "roof-3", "category": "roof", "defaultBuildingId": "leaf_roof", "x": 2, "y": 1 },
+    { "id": "path-1", "category": "path", "defaultBuildingId": "dirt_path", "x": 3, "y": 1 },
+    { "id": "path-2", "category": "path", "defaultBuildingId": "dirt_path", "x": 4, "y": 1 },
+    { "id": "path-3", "category": "path", "defaultBuildingId": "dirt_path", "x": 0, "y": 2 },
+    { "id": "path-4", "category": "path", "defaultBuildingId": "dirt_path", "x": 1, "y": 2 },
+    { "id": "path-5", "category": "path", "defaultBuildingId": "dirt_path", "x": 2, "y": 2 },
+    { "id": "flower-1", "category": "flowerbed", "defaultBuildingId": "flower_bed", "x": 3, "y": 2 },
+    { "id": "flower-2", "category": "flowerbed", "defaultBuildingId": "flower_bed", "x": 4, "y": 2 },
+    { "id": "flower-3", "category": "flowerbed", "defaultBuildingId": "flower_bed", "x": 0, "y": 3 },
+    { "id": "decor-1", "category": "decor", "defaultBuildingId": "moss_decor", "x": 1, "y": 3 },
+    { "id": "decor-2", "category": "decor", "defaultBuildingId": "moss_decor", "x": 2, "y": 3 },
+    { "id": "decor-3", "category": "decor", "defaultBuildingId": "moss_decor", "x": 3, "y": 3 },
+    { "id": "decor-4", "category": "decor", "defaultBuildingId": "moss_decor", "x": 4, "y": 3 }
+  ],
+  "zones": [
+    {
+      "id": "pipe-entrance",
+      "name": "배관 입구",
+      "unlockSurfaceRate": 0.6,
+      "nextZoneId": "curved-drain",
+      "accent": "#85b6a5",
+      "targets": [
+        { "id": "entrance-01", "dirtTypeId": "leaf_clump", "x": 160, "y": 245 },
+        { "id": "entrance-02", "dirtTypeId": "grass_mat", "x": 290, "y": 330 },
+        { "id": "entrance-03", "dirtTypeId": "leaf_clump", "x": 420, "y": 225 },
+        { "id": "entrance-04", "dirtTypeId": "mud_cake", "x": 560, "y": 355 },
+        { "id": "entrance-05", "dirtTypeId": "leaf_clump", "x": 700, "y": 250 },
+        { "id": "entrance-06", "dirtTypeId": "grass_mat", "x": 830, "y": 375 },
+        { "id": "entrance-07", "dirtTypeId": "mud_cake", "x": 225, "y": 465 },
+        { "id": "entrance-08", "dirtTypeId": "leaf_clump", "x": 390, "y": 475 },
+        { "id": "entrance-09", "dirtTypeId": "grass_mat", "x": 625, "y": 485 },
+        { "id": "entrance-10", "dirtTypeId": "mud_cake", "x": 815, "y": 495 }
+      ]
+    },
+    {
+      "id": "curved-drain",
+      "name": "굽은 배수로",
+      "unlockSurfaceRate": 0.6,
+      "nextZoneId": "blocked-connector",
+      "accent": "#84a87a",
+      "targets": [
+        { "id": "drain-01", "dirtTypeId": "grass_mat", "x": 145, "y": 240 },
+        { "id": "drain-02", "dirtTypeId": "grass_mat", "x": 270, "y": 320 },
+        { "id": "drain-03", "dirtTypeId": "leaf_clump", "x": 400, "y": 230 },
+        { "id": "drain-04", "dirtTypeId": "mud_cake", "x": 520, "y": 350 },
+        { "id": "drain-05", "dirtTypeId": "grass_mat", "x": 660, "y": 250 },
+        { "id": "drain-06", "dirtTypeId": "leaf_clump", "x": 805, "y": 350 },
+        { "id": "drain-07", "dirtTypeId": "grass_mat", "x": 165, "y": 455 },
+        { "id": "drain-08", "dirtTypeId": "mud_cake", "x": 315, "y": 475 },
+        { "id": "drain-09", "dirtTypeId": "grass_mat", "x": 485, "y": 460 },
+        { "id": "drain-10", "dirtTypeId": "leaf_clump", "x": 630, "y": 485 },
+        { "id": "drain-11", "dirtTypeId": "mud_cake", "x": 765, "y": 470 },
+        { "id": "drain-12", "dirtTypeId": "grass_mat", "x": 890, "y": 245 }
+      ]
+    },
+    {
+      "id": "blocked-connector",
+      "name": "막힌 연결관",
+      "unlockSurfaceRate": 0.6,
+      "accent": "#b38a6b",
+      "targets": [
+        { "id": "connector-01", "dirtTypeId": "mud_cake", "x": 135, "y": 235 },
+        { "id": "connector-02", "dirtTypeId": "mud_cake", "x": 255, "y": 325 },
+        { "id": "connector-03", "dirtTypeId": "leaf_clump", "x": 375, "y": 225 },
+        { "id": "connector-04", "dirtTypeId": "grass_mat", "x": 495, "y": 350 },
+        { "id": "connector-05", "dirtTypeId": "mud_cake", "x": 615, "y": 245 },
+        { "id": "connector-06", "dirtTypeId": "leaf_clump", "x": 735, "y": 350 },
+        { "id": "connector-07", "dirtTypeId": "mud_cake", "x": 855, "y": 245 },
+        { "id": "connector-08", "dirtTypeId": "grass_mat", "x": 150, "y": 460 },
+        { "id": "connector-09", "dirtTypeId": "mud_cake", "x": 275, "y": 475 },
+        { "id": "connector-10", "dirtTypeId": "leaf_clump", "x": 405, "y": 455 },
+        { "id": "connector-11", "dirtTypeId": "mud_cake", "x": 535, "y": 480 },
+        { "id": "connector-12", "dirtTypeId": "grass_mat", "x": 665, "y": 455 },
+        { "id": "connector-13", "dirtTypeId": "mud_cake", "x": 795, "y": 480 },
+        { "id": "connector-14", "dirtTypeId": "leaf_clump", "x": 900, "y": 365 }
+      ]
+    }
+  ]
+}

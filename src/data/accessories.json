@@ -1,0 +1,26 @@
+[
+  {
+    "id": "narrow_nozzle",
+    "name": "좁은 흡입구",
+    "description": "낙엽 아래의 좁은 틈새층에 접근합니다.",
+    "requiredCleanerLevel": 3,
+    "cost": [{ "itemId": "grass", "amount": 6 }, { "itemId": "fiber", "amount": 2 }],
+    "color": "#d0b77c"
+  },
+  {
+    "id": "root_brush",
+    "name": "뿌리 브러시",
+    "description": "살아 있는 뿌리를 손상 없이 풀어냅니다.",
+    "requiredCleanerLevel": 3,
+    "cost": [{ "itemId": "grass", "amount": 8 }, { "itemId": "clay", "amount": 1 }],
+    "color": "#8eb471"
+  },
+  {
+    "id": "pressure_disc",
+    "name": "압력 회전판",
+    "description": "단단한 흙과 광물 압착층을 들어냅니다.",
+    "requiredCleanerLevel": 3,
+    "cost": [{ "itemId": "soil", "amount": 10 }, { "itemId": "resin", "amount": 1 }],
+    "color": "#b98565"
+  }
+]

@@ -1,0 +1,94 @@
+[
+  {
+    "id": "cleaner_level_2",
+    "name": "청소기 2단계",
+    "kind": "cleaner_upgrade",
+    "outputId": "cleaner_level",
+    "outputAmount": 1,
+    "cleanerLevel": 2,
+    "costs": [{ "itemId": "leaf", "amount": 6 }, { "itemId": "grass", "amount": 6 }]
+  },
+  {
+    "id": "cleaner_level_3",
+    "name": "청소기 3단계",
+    "kind": "cleaner_upgrade",
+    "outputId": "cleaner_level",
+    "outputAmount": 1,
+    "cleanerLevel": 3,
+    "costs": [{ "itemId": "soil", "amount": 10 }, { "itemId": "fiber", "amount": 2 }]
+  },
+  {
+    "id": "leaf_enzyme_batch",
+    "name": "잎 효소액 3회분",
+    "kind": "liquid",
+    "outputId": "leaf_enzyme",
+    "outputAmount": 3,
+    "costs": [{ "itemId": "leaf", "amount": 3 }]
+  },
+  {
+    "id": "grass_ferment_batch",
+    "name": "풀 발효액 3회분",
+    "kind": "liquid",
+    "outputId": "grass_ferment",
+    "outputAmount": 3,
+    "costs": [{ "itemId": "grass", "amount": 3 }]
+  },
+  {
+    "id": "clay_binder_batch",
+    "name": "점토 결합액 3회분",
+    "kind": "liquid",
+    "outputId": "clay_binder",
+    "outputAmount": 3,
+    "costs": [{ "itemId": "soil", "amount": 3 }]
+  },
+  {
+    "id": "compressed_leaf_mix",
+    "name": "압축 낙엽 세정액",
+    "kind": "mixture",
+    "outputId": "compressed_leaf_solution",
+    "outputAmount": 1,
+    "ingredients": ["leaf_enzyme", "leaf_enzyme", "water"],
+    "effect": "압축된 낙엽층 제거",
+    "hint": "갈색 낙엽층에는 잎 성분을 진하게 사용합니다."
+  },
+  {
+    "id": "root_grass_mix",
+    "name": "뿌리 풀 세정액",
+    "kind": "mixture",
+    "outputId": "root_grass_solution",
+    "outputAmount": 1,
+    "ingredients": ["grass_ferment", "grass_ferment", "water"],
+    "effect": "뿌리와 얽힌 풀 제거",
+    "hint": "초록 뿌리층에는 풀 성분을 진하게 사용합니다."
+  },
+  {
+    "id": "stable_clay_mix",
+    "name": "점토 안정 세정액",
+    "kind": "mixture",
+    "outputId": "stable_clay_solution",
+    "outputAmount": 1,
+    "ingredients": ["clay_binder", "clay_binder", "water"],
+    "effect": "부스러지는 점토층 안정화",
+    "hint": "흙빛 층에는 점토 성분을 진하게 사용합니다."
+  },
+  {
+    "id": "mixed_organic_mix",
+    "name": "혼합 유기물 세정액",
+    "kind": "mixture",
+    "outputId": "mixed_organic_solution",
+    "outputAmount": 1,
+    "ingredients": ["leaf_enzyme", "grass_ferment", "water"],
+    "effect": "낙엽과 뿌리가 섞인 층 제거",
+    "hint": "서로 다른 유기물 흔적에는 잎과 풀 성분을 한 방울씩 사용합니다."
+  },
+  {
+    "id": "resin_release_mix",
+    "name": "수지 이완 세정액",
+    "kind": "mixture",
+    "outputId": "resin_release_solution",
+    "outputAmount": 1,
+    "ingredients": ["leaf_enzyme", "clay_binder", "water"],
+    "effect": "틈새와 광물층의 수지 이완",
+    "hint": "끈적한 갈색 흔적에는 잎 효소와 결합액을 함께 사용합니다."
+  }
+]

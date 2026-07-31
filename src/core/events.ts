@@ -1,0 +1,32 @@
+export type GameEventType =
+  | "DIRT_CLEANED"
+  | "DEEP_LAYER_CLEANED"
+  | "MATERIAL_GAINED"
+  | "ACTIVITY_CHANGED"
+  | "HOUSE_BUILT"
+  | "HOUSE_REMOVED"
+  | "HAPPINESS_CHANGED"
+  | "ITEM_CRAFTED"
+  | "MIXTURE_ATTEMPTED"
+  | "RECIPE_DISCOVERED"
+  | "ACCESSORY_CRAFTED"
+  | "ACCESSORY_EQUIPPED"
+  | "ZONE_UNLOCKED"
+  | "DAY_ENDED"
+  | "GAME_COMPLETED"
+  | "SAVE_COMPLETED"
+  | "RULE_REJECTED";
+
+export interface GameEvent<T = Record<string, unknown>> {
+  type: GameEventType;
+  message: string;
+  data: T;
+}
+
+export function gameEvent<T extends Record<string, unknown>>(
+  type: GameEventType,
+  message: string,
+  data: T,
+): GameEvent<T> {
+  return { type, message, data };
+}

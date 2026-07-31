@@ -1,0 +1,111 @@
+[
+  {
+    "id": "leaf_clump",
+    "name": "젖은 낙엽 더미",
+    "color": "#9f653f",
+    "rewards": [
+      { "itemId": "leaf", "min": 2, "max": 4 },
+      { "itemId": "grass", "min": 0, "max": 1 }
+    ],
+    "layers": [
+      {
+        "level": 2,
+        "name": "눌린 섬유층",
+        "requiredCleanerLevel": 2,
+        "rewards": [
+          { "itemId": "fiber", "min": 1, "max": 2 },
+          { "itemId": "plant_enzyme", "min": 1, "max": 1 },
+          { "itemId": "leaf", "min": 1, "max": 2 }
+        ],
+        "hint": "흡입력을 2단계로 높이면 섬유를 분리할 수 있습니다."
+      },
+      {
+        "level": 3,
+        "name": "압축 낙엽층",
+        "requiredCleanerLevel": 3,
+        "requiredSolutionId": "compressed_leaf_solution",
+        "rewards": [{ "itemId": "seed", "min": 1, "max": 1 }, { "itemId": "fiber", "min": 1, "max": 2 }],
+        "hint": "잎 효소액 두 방울과 물을 섞은 세정액이 필요합니다."
+      },
+      {
+        "level": 4,
+        "name": "수지 틈새층",
+        "requiredCleanerLevel": 3,
+        "requiredSolutionId": "resin_release_solution",
+        "requiredAccessoryId": "narrow_nozzle",
+        "rewards": [{ "itemId": "resin", "min": 1, "max": 2 }, { "itemId": "flower", "min": 0, "max": 1 }],
+        "hint": "좁은 흡입구와 수지를 풀어내는 조합이 필요합니다."
+      }
+    ]
+  },
+  {
+    "id": "grass_mat",
+    "name": "엉킨 풀뿌리",
+    "color": "#657c48",
+    "rewards": [
+      { "itemId": "grass", "min": 2, "max": 4 },
+      { "itemId": "leaf", "min": 0, "max": 1 }
+    ],
+    "layers": [
+      {
+        "level": 2,
+        "name": "얽힌 섬유층",
+        "requiredCleanerLevel": 2,
+        "rewards": [{ "itemId": "fiber", "min": 1, "max": 2 }, { "itemId": "grass", "min": 1, "max": 2 }],
+        "hint": "청소기 2단계가 뿌리 사이의 섬유를 분리합니다."
+      },
+      {
+        "level": 3,
+        "name": "뿌리 매듭층",
+        "requiredCleanerLevel": 3,
+        "requiredSolutionId": "root_grass_solution",
+        "rewards": [{ "itemId": "seed", "min": 1, "max": 1 }, { "itemId": "moss", "min": 0, "max": 1 }],
+        "hint": "풀 발효액 두 방울과 물을 섞어 뿌리를 느슨하게 만드세요."
+      },
+      {
+        "level": 4,
+        "name": "살아 있는 뿌리층",
+        "requiredCleanerLevel": 3,
+        "requiredSolutionId": "mixed_organic_solution",
+        "requiredAccessoryId": "root_brush",
+        "rewards": [{ "itemId": "moss", "min": 1, "max": 2 }, { "itemId": "flower", "min": 1, "max": 1 }],
+        "hint": "뿌리 브러시와 잎·풀 혼합액이 희귀 재료 손상을 막습니다."
+      }
+    ]
+  },
+  {
+    "id": "mud_cake",
+    "name": "굳은 흙덩이",
+    "color": "#754d3b",
+    "rewards": [
+      { "itemId": "soil", "min": 2, "max": 4 },
+      { "itemId": "grass", "min": 0, "max": 1 }
+    ],
+    "layers": [
+      {
+        "level": 2,
+        "name": "굳은 점토층",
+        "requiredCleanerLevel": 2,
+        "rewards": [{ "itemId": "clay", "min": 1, "max": 2 }, { "itemId": "soil", "min": 1, "max": 2 }],
+        "hint": "청소기 2단계로 굳은 흙을 잘게 분리할 수 있습니다."
+      },
+      {
+        "level": 3,
+        "name": "부스러지는 점토층",
+        "requiredCleanerLevel": 3,
+        "requiredSolutionId": "stable_clay_solution",
+        "rewards": [{ "itemId": "clay", "min": 2, "max": 3 }, { "itemId": "resin", "min": 1, "max": 1 }],
+        "hint": "점토 결합액 두 방울과 물로 층을 안정화해야 합니다."
+      },
+      {
+        "level": 4,
+        "name": "광물 압착층",
+        "requiredCleanerLevel": 3,
+        "requiredSolutionId": "resin_release_solution",
+        "requiredAccessoryId": "pressure_disc",
+        "rewards": [{ "itemId": "resin", "min": 1, "max": 2 }, { "itemId": "moss", "min": 0, "max": 1 }],
+        "hint": "압력 회전판과 수지 이완액으로 단단한 층을 들어내세요."
+      }
+    ]
+  }
+]

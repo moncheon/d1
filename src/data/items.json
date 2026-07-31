@@ -1,0 +1,13 @@
+[
+  { "id": "leaf", "name": "낙엽", "category": "common", "color": "#d98645" },
+  { "id": "grass", "name": "풀", "category": "common", "color": "#86a95c" },
+  { "id": "soil", "name": "흙", "category": "common", "color": "#9c6948" },
+  { "id": "fiber", "name": "섬유", "category": "processed", "color": "#d7c88d" },
+  { "id": "clay", "name": "점토", "category": "processed", "color": "#be765d" },
+  { "id": "plant_enzyme", "name": "식물 효소", "category": "processed", "color": "#a9c966" },
+  { "id": "seed", "name": "씨앗", "category": "rare", "color": "#e7b85f" },
+  { "id": "flower", "name": "꽃", "category": "rare", "color": "#e98aa3" },
+  { "id": "resin", "name": "수지", "category": "rare", "color": "#f2c269" },
+  { "id": "moss", "name": "부드러운 이끼", "category": "rare", "color": "#73b58a" }
+]
+
