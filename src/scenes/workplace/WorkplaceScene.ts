@@ -21,6 +21,14 @@ interface MovementKeys {
   right: Phaser.Input.Keyboard.Key;
 }
 
+interface WorkplaceSceneData {
+  zoneId?: string;
+  solutionId?: string;
+  message?: string;
+  playerX?: number;
+  playerY?: number;
+}
+
 export class WorkplaceScene extends Phaser.Scene {
   private zoneId = "pipe-entrance";
   private player?: Phaser.GameObjects.Container;
@@ -32,13 +40,15 @@ export class WorkplaceScene extends Phaser.Scene {
   private progressText?: Phaser.GameObjects.Text;
   private selectedSolutionId?: string;
   private startupMessage?: string;
+  private startPlayerX = 80;
+  private startPlayerY = 500;
   private isTransitioning = false;
 
   public constructor() {
     super("WorkplaceScene");
   }
 
-  public init(data: { zoneId?: string; solutionId?: string; message?: string }): void {
+  public init(data: WorkplaceSceneData = {}): void {
     const requested = data.zoneId;
     const state = getGameEngine().getState();
     this.zoneId = requested && state.unlockedZones.includes(requested)
@@ -51,6 +61,12 @@ export class WorkplaceScene extends Phaser.Scene {
       ? data.solutionId
       : undefined;
     this.startupMessage = data.message;
+    this.startPlayerX = typeof data.playerX === "number" && Number.isFinite(data.playerX)
+      ? Phaser.Math.Clamp(data.playerX, 45, 975)
+      : 80;
+    this.startPlayerY = typeof data.playerY === "number" && Number.isFinite(data.playerY)
+      ? Phaser.Math.Clamp(data.playerY, 195, 525)
+      : 500;
   }
 
   public create(): void {
@@ -58,7 +74,7 @@ export class WorkplaceScene extends Phaser.Scene {
     this.drawHeader();
     this.drawZoneTabs();
     this.drawTargets();
-    this.player = addQuokka(this, 80, 500).setDepth(50);
+    this.player = addQuokka(this, this.startPlayerX, this.startPlayerY).setDepth(50);
     this.setupInput();
     showToast(
       this,
@@ -160,7 +176,9 @@ export class WorkplaceScene extends Phaser.Scene {
       const unlocked = state.unlockedZones.includes(zone.id);
       addButton(this, 150 + index * 210, 122, 190, 44,
         unlocked ? zone.name : `🔒 ${zone.name}`,
-        () => this.scene.restart({ zoneId: zone.id }),
+        () => this.scene.restart(zone.id === this.zoneId
+          ? this.restartData({ zoneId: zone.id })
+          : { zoneId: zone.id }),
         {
           disabled: !unlocked,
           fill: zone.id === this.zoneId ? palette.clean : palette.inkSoft,
@@ -270,8 +288,7 @@ export class WorkplaceScene extends Phaser.Scene {
       this.time.delayedCall(1150, () => this.scene.start("HomeScene"));
     } else {
       this.time.delayedCall(260, () => this.scene.restart({
-        zoneId: this.zoneId,
-        solutionId: this.selectedSolutionId,
+        ...this.restartData(),
         message,
       }));
     }
@@ -279,9 +296,18 @@ export class WorkplaceScene extends Phaser.Scene {
 
   private progressLabel(): string {
     const snapshot = getGameEngine().snapshot();
+    const zone = zones.find((candidate) => candidate.id === this.zoneId);
     const surface = Math.round(surfaceCleaningRate(snapshot, this.zoneId) * 100);
     const precision = Math.round(precisionCleaningRate(snapshot, this.zoneId) * 100);
-    return `통행 ${surface}% · 정밀 ${precision}% · 해금 기준 60%`;
+    const threshold = Math.round((zone?.unlockSurfaceRate ?? 0.6) * 100);
+    if (!zone?.nextZoneId) {
+      const finalProgress = surface >= threshold ? "엔딩 통행 조건 달성" : `엔딩 통행 기준 ${threshold}%`;
+      return `통행 ${surface}% · 정밀 ${precision}% · ${finalProgress}`;
+    }
+    const unlockProgress = snapshot.unlockedZones.includes(zone.nextZoneId)
+      ? "다음 구역 해금 완료"
+      : `해금 기준 ${threshold}%`;
+    return `통행 ${surface}% · 정밀 ${precision}% · ${unlockProgress}`;
   }
 
   private cycleSolution(): void {
@@ -292,6 +318,16 @@ export class WorkplaceScene extends Phaser.Scene {
     const options = [undefined, ...available];
     const current = options.indexOf(this.selectedSolutionId);
     const next = options[(current + 1) % options.length];
-    this.scene.restart({ zoneId: this.zoneId, solutionId: next });
+    this.scene.restart(this.restartData({ solutionId: next }));
+  }
+
+  private restartData(overrides: WorkplaceSceneData = {}): WorkplaceSceneData {
+    return {
+      zoneId: this.zoneId,
+      solutionId: this.selectedSolutionId,
+      playerX: this.player?.x ?? this.startPlayerX,
+      playerY: this.player?.y ?? this.startPlayerY,
+      ...overrides,
+    };
   }
 }

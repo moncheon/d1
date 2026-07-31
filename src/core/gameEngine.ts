@@ -12,7 +12,11 @@ import { buildHousePart, removeHousePart } from "../systems/building";
 import { cleanDirt, harvestDailyPile } from "../systems/cleaning";
 import { craftRecipe, mixLiquids } from "../systems/crafting";
 import { craftAccessory, equipAccessory } from "../systems/equipment";
-import { activityForHappiness, isGameComplete } from "../systems/progression";
+import {
+  activityForHappiness,
+  isGameComplete,
+  reconcileUnlockedZones,
+} from "../systems/progression";
 import type { SaveRepository } from "../systems/saving";
 
 export interface GameEngineOptions {
@@ -30,6 +34,9 @@ export class GameEngine {
     this.state = cloneGameState(options.initialState ?? createInitialGameState());
     this.saveRepository = options.saveRepository;
     this.analytics = options.analytics ?? new NullAnalytics();
+    if (reconcileUnlockedZones(this.state).length > 0) {
+      this.saveRepository?.save(this.state);
+    }
   }
 
   public getState(): Readonly<GameState> {
@@ -44,6 +51,13 @@ export class GameEngine {
     const before = cloneGameState(this.state);
     try {
       const events = this.execute(command);
+      for (const unlock of reconcileUnlockedZones(this.state)) {
+        events.push(gameEvent("ZONE_UNLOCKED", `${unlock.name}이 열렸습니다!`, {
+          zoneId: unlock.zoneId,
+          sourceZoneId: unlock.sourceZoneId,
+          surfaceRate: unlock.surfaceRate,
+        }));
+      }
       const consumesActivity = events.some((event) => event.type === "ACTIVITY_CHANGED");
       if (consumesActivity && this.state.currentActivity === 0) {
         events.push(...this.endDay());

@@ -67,6 +67,47 @@ describe("GameEngine core loop", () => {
     expect(engine.getState().unlockedZones).toContain("curved-drain");
   });
 
+  it("unlocks the final zone after the curved drain passes sixty percent", () => {
+    const initialState = createInitialGameState();
+    initialState.currentActivity = 10;
+    initialState.maxActivity = 10;
+    initialState.unlockedZones.push("curved-drain");
+    const engine = new GameEngine({ initialState });
+
+    let unlockEvents = engine.dispatch(commands.cleanDirt("curved-drain", "drain-01"));
+    for (let index = 2; index <= 8; index += 1) {
+      unlockEvents = engine.dispatch(commands.cleanDirt("curved-drain", `drain-0${index}`));
+    }
+
+    expect(unlockEvents.some((event) => event.type === "ZONE_UNLOCKED")).toBe(true);
+    expect(engine.getState().unlockedZones).toContain("blocked-connector");
+  });
+
+  it("repairs and saves stale unlock data when completed areas are loaded", () => {
+    const initialState = createInitialGameState();
+    const entranceTargets = initialState.zoneCleaningState["pipe-entrance"]?.targets;
+    const drainTargets = initialState.zoneCleaningState["curved-drain"]?.targets;
+    if (!entranceTargets || !drainTargets) throw new Error("fixture zones missing");
+    Object.values(entranceTargets).slice(0, 6).forEach((target) => {
+      target.surfaceCleaned = true;
+      target.deepestLayer = 1;
+    });
+    Object.values(drainTargets).slice(0, 8).forEach((target) => {
+      target.surfaceCleaned = true;
+      target.deepestLayer = 1;
+    });
+    const saveRepository = new MemorySaveRepository();
+
+    const engine = new GameEngine({ initialState, saveRepository });
+
+    expect(engine.getState().unlockedZones).toEqual([
+      "pipe-entrance",
+      "curved-drain",
+      "blocked-connector",
+    ]);
+    expect(saveRepository.load()).toEqual(engine.snapshot());
+  });
+
   it("builds with shared materials and applies higher activity on the next day", () => {
     const initialState = createInitialGameState();
     initialState.inventory = { leaf: 20, grass: 20, soil: 20 };

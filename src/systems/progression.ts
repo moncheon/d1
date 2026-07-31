@@ -59,6 +59,35 @@ export function precisionCleaningRate(state: GameState, zoneId: string): number 
   return cleanedDeepLayers / totalDeepLayers;
 }
 
+export interface ZoneUnlock {
+  zoneId: string;
+  sourceZoneId: string;
+  surfaceRate: number;
+  name: string;
+}
+
+export function reconcileUnlockedZones(state: GameState): ZoneUnlock[] {
+  const unlocked: ZoneUnlock[] = [];
+
+  for (const zone of zones) {
+    if (!state.unlockedZones.includes(zone.id) || !zone.nextZoneId) continue;
+
+    const surfaceRate = surfaceCleaningRate(state, zone.id);
+    if (surfaceRate < zone.unlockSurfaceRate || state.unlockedZones.includes(zone.nextZoneId)) continue;
+
+    const nextZone = zones.find((candidate) => candidate.id === zone.nextZoneId);
+    state.unlockedZones.push(zone.nextZoneId);
+    unlocked.push({
+      zoneId: zone.nextZoneId,
+      sourceZoneId: zone.id,
+      surfaceRate,
+      name: nextZone?.name ?? "다음 구역",
+    });
+  }
+
+  return unlocked;
+}
+
 export interface CompletionProgress {
   finalZoneSurfaceReady: boolean;
   cleanerReady: boolean;

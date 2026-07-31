@@ -5,7 +5,6 @@ import { GameRuleError } from "../core/errors";
 import { gameEvent, type GameEvent } from "../core/events";
 import type { DirtDefinition, DirtLayerDefinition, ZoneDefinition } from "../entities/types";
 import { addItem } from "./inventory";
-import { surfaceCleaningRate } from "./progression";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
@@ -99,19 +98,6 @@ export function cleanDirt(
       maxActivity: state.maxActivity,
     }),
   ];
-
-  const rate = surfaceCleaningRate(state, zoneId);
-  if (zone.nextZoneId && rate >= zone.unlockSurfaceRate && !state.unlockedZones.includes(zone.nextZoneId)) {
-    state.unlockedZones.push(zone.nextZoneId);
-    const nextZone = zones.find((candidate) => candidate.id === zone.nextZoneId);
-    events.push(
-      gameEvent("ZONE_UNLOCKED", `${nextZone?.name ?? "다음 구역"}이 열렸습니다!`, {
-        zoneId: zone.nextZoneId,
-        sourceZoneId: zoneId,
-        surfaceRate: rate,
-      }),
-    );
-  }
 
   return events;
 }
