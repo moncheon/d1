@@ -3,11 +3,14 @@ import dirtJson from "../../data/dirt.json";
 import mapsJson from "../../data/maps.json";
 import recipesJson from "../../data/recipes.json";
 import { commands } from "../../core/commands";
+import type { GameEvent } from "../../core/events";
 import { getGameEngine } from "../../core/gameContext";
 import type { DirtDefinition, DirtTargetDefinition, RecipeDefinition, ZoneDefinition } from "../../entities/types";
 import { nextDirtLayer } from "../../systems/cleaning";
+import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guidance";
 import { precisionCleaningRate, surfaceCleaningRate } from "../../systems/progression";
 import { addButton, addQuokka, addTitle, showToast } from "../../ui/components";
+import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
@@ -27,6 +30,9 @@ interface WorkplaceSceneData {
   message?: string;
   playerX?: number;
   playerY?: number;
+  focusId?: string;
+  recentEventType?: GameEvent["type"];
+  intent?: ReturnType<typeof commands.cleanDirt>;
 }
 
 export class WorkplaceScene extends Phaser.Scene {
@@ -42,6 +48,9 @@ export class WorkplaceScene extends Phaser.Scene {
   private startupMessage?: string;
   private startPlayerX = 80;
   private startPlayerY = 500;
+  private focusId?: string;
+  private recentEventType?: GameEvent["type"];
+  private intent?: ReturnType<typeof commands.cleanDirt>;
   private isTransitioning = false;
 
   public constructor() {
@@ -61,6 +70,9 @@ export class WorkplaceScene extends Phaser.Scene {
       ? data.solutionId
       : undefined;
     this.startupMessage = data.message;
+    this.focusId = data.focusId;
+    this.recentEventType = data.recentEventType;
+    this.intent = data.intent;
     this.startPlayerX = typeof data.playerX === "number" && Number.isFinite(data.playerX)
       ? Phaser.Math.Clamp(data.playerX, 45, 975)
       : 80;
@@ -76,6 +88,17 @@ export class WorkplaceScene extends Phaser.Scene {
     this.drawTargets();
     this.player = addQuokka(this, this.startPlayerX, this.startPlayerY).setDepth(50);
     this.setupInput();
+    const guidance = getQuokkaGuidance(getGameEngine().snapshot(), {
+      scene: "workplace",
+      zoneId: this.zoneId,
+      recentEventType: this.recentEventType,
+      intent: this.intent,
+    });
+    addQuokkaGuide(this, guidance, {
+      sceneName: "workplace",
+      actor: this.player,
+      onFollow: (destination) => this.followGuidance(destination),
+    });
     showToast(
       this,
       this.startupMessage ?? "오염물을 다시 누르면 더 깊은 층을 청소합니다.",
@@ -202,6 +225,27 @@ export class WorkplaceScene extends Phaser.Scene {
       const fullyCleaned = (targetState?.deepestLayer ?? 0) >= maxLayer;
       const nextLayer = nextDirtLayer(getGameEngine().snapshot(), this.zoneId, target.id);
       const color = Phaser.Display.Color.HexStringToColor(dirt.color).color;
+      if (this.focusId === target.id) {
+        const scent = this.add.ellipse(target.x, target.y + 5, 118, 86, 0xf4df9b, 0.08)
+          .setStrokeStyle(3, 0xf4df9b, 0.9)
+          .setDepth(8);
+        const paw = this.add.text(target.x, target.y - 58, "·  냄새를 기억한 곳  ·", {
+          color: "#f4df9b",
+          fontSize: "10px",
+          fontStyle: "bold",
+          fontFamily: '"Malgun Gothic", sans-serif',
+        }).setOrigin(0.5).setDepth(12);
+        this.tweens.add({
+          targets: [scent, paw],
+          alpha: { from: 0.3, to: 1 },
+          scaleX: { from: 0.96, to: 1.05 },
+          scaleY: { from: 0.96, to: 1.05 },
+          duration: 850,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.InOut",
+        });
+      }
       const shadow = this.add.ellipse(0, 15, 72, 27, 0x101718, 0.32);
       const blobAlpha = fullyCleaned ? 0.18 : cleaned ? 0.58 : 1;
       const blob1 = this.add.circle(-15, 1, 23, cleaned ? palette.clean : color, blobAlpha);
@@ -265,7 +309,13 @@ export class WorkplaceScene extends Phaser.Scene {
     const events = getGameEngine().dispatch(commands.cleanDirt(this.zoneId, target.id, this.selectedSolutionId));
     const rejected = events.find((event) => event.type === "RULE_REJECTED");
     if (rejected) {
-      showToast(this, rejected.message, "error");
+      showToast(this, "앗, 안쪽 냄새가 달라. 필요한 준비를 수첩에 이어 적어 둘게.", "normal", 900);
+      this.time.delayedCall(520, () => this.scene.restart({
+        ...this.restartData(),
+        focusId: target.id,
+        recentEventType: "RULE_REJECTED",
+        intent: commands.cleanDirt(this.zoneId, target.id, this.selectedSolutionId),
+      }));
       return;
     }
 
@@ -285,11 +335,12 @@ export class WorkplaceScene extends Phaser.Scene {
     if (events.some((event) => event.type === "DAY_ENDED")) {
       this.isTransitioning = true;
       showToast(this, "활동력을 모두 썼습니다. 쿼카가 집으로 돌아가 잠듭니다…", "success", 900);
-      this.time.delayedCall(1150, () => this.scene.start("HomeScene"));
+      this.time.delayedCall(1150, () => this.scene.start("HomeScene", { recentEventType: "DAY_ENDED" }));
     } else {
       this.time.delayedCall(260, () => this.scene.restart({
         ...this.restartData(),
         message,
+        recentEventType: (unlock ?? deep ?? events.find((event) => event.type === "DIRT_CLEANED"))?.type,
       }));
     }
   }
@@ -319,6 +370,22 @@ export class WorkplaceScene extends Phaser.Scene {
     const current = options.indexOf(this.selectedSolutionId);
     const next = options[(current + 1) % options.length];
     this.scene.restart(this.restartData({ solutionId: next }));
+  }
+
+  private followGuidance(destination: GuidanceDestination): void {
+    if (destination.scene === "workplace") {
+      const destinationZone = destination.zoneId ?? this.zoneId;
+      this.scene.restart(destinationZone === this.zoneId
+        ? this.restartData({ zoneId: destinationZone, focusId: destination.focusId })
+        : { zoneId: destinationZone, focusId: destination.focusId });
+    } else if (destination.scene === "workshop") {
+      this.scene.start("WorkshopScene", {
+        focusId: destination.focusId,
+        ingredients: destination.ingredients,
+      });
+    } else {
+      this.scene.start("HomeScene", { focusId: destination.focusId });
+    }
   }
 
   private restartData(overrides: WorkplaceSceneData = {}): WorkplaceSceneData {

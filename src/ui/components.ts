@@ -8,6 +8,7 @@ export interface ButtonOptions {
   fontSize?: number;
   disabled?: boolean;
   align?: "center" | "left";
+  highlighted?: boolean;
 }
 
 export function addPanel(
@@ -41,6 +42,9 @@ export function addButton(
   const background = scene.add
     .rectangle(0, 0, width, height, options.disabled ? palette.ink : fill, 1)
     .setStrokeStyle(2, border, options.disabled ? 0.35 : 0.9);
+  const highlight = scene.add
+    .rectangle(0, 0, width + 8, height + 8, 0xffffff, 0)
+    .setStrokeStyle(3, 0xf6edd8, options.highlighted ? 0.9 : 0);
   const text = scene.add
     .text(options.align === "left" ? -width / 2 + 12 : 0, 0, label, {
       color: options.disabled ? "#738181" : palette.cream,
@@ -51,7 +55,7 @@ export function addButton(
       wordWrap: { width: width - 20 },
     })
     .setOrigin(options.align === "left" ? 0 : 0.5, 0.5);
-  const container = scene.add.container(x, y, [background, text]);
+  const container = scene.add.container(x, y, [highlight, background, text]);
   container.setSize(width, height);
 
   if (!options.disabled) {
@@ -62,6 +66,18 @@ export function addButton(
       background.setScale(0.97);
       scene.time.delayedCall(70, () => background.setScale(1));
       onClick();
+    });
+  }
+  if (options.highlighted) {
+    scene.tweens.add({
+      targets: highlight,
+      alpha: { from: 0.25, to: 1 },
+      scaleX: { from: 0.98, to: 1.03 },
+      scaleY: { from: 0.98, to: 1.08 },
+      duration: 850,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
     });
   }
   return container;
@@ -133,4 +149,35 @@ export function addQuokka(scene: Phaser.Scene, x: number, y: number): Phaser.Gam
     smileLeft,
     smileRight,
   ]);
+}
+
+export function playQuokkaReaction(
+  scene: Phaser.Scene,
+  quokka: Phaser.GameObjects.Container | undefined,
+  mood: "curious" | "hopeful" | "proud" | "restful",
+): void {
+  if (!quokka) return;
+  if (mood === "curious") {
+    scene.tweens.add({ targets: quokka, angle: { from: -2, to: 2 }, duration: 260, yoyo: true, repeat: 2 });
+    return;
+  }
+  if (mood === "proud") {
+    const scaleX = quokka.scaleX;
+    const scaleY = quokka.scaleY;
+    scene.tweens.add({
+      targets: quokka,
+      scaleX: scaleX * 1.12,
+      scaleY: scaleY * 1.12,
+      duration: 190,
+      yoyo: true,
+      repeat: 1,
+      ease: "Back.Out",
+    });
+    return;
+  }
+  if (mood === "hopeful") {
+    scene.tweens.add({ targets: quokka, y: quokka.y - 7, duration: 230, yoyo: true, repeat: 1, ease: "Sine.Out" });
+    return;
+  }
+  scene.tweens.add({ targets: quokka, scaleY: quokka.scaleY * 0.94, duration: 700, yoyo: true, repeat: 1 });
 }

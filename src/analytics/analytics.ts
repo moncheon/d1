@@ -32,3 +32,18 @@ export class ConsoleAnalytics implements AnalyticsSink {
 export class NullAnalytics implements AnalyticsSink {
   public track(): void {}
 }
+
+export function trackGuidanceInteraction(
+  action: "opened" | "followed",
+  guidanceId: string,
+  scene: string,
+  state: Readonly<GameState>,
+): void {
+  console.info("[telemetry]", {
+    event: `guidance_${action}`,
+    guidanceId,
+    scene,
+    day: state.day,
+    activity: state.currentActivity,
+  });
+}

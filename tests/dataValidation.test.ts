@@ -5,6 +5,7 @@ import dirtJson from "../src/data/dirt.json";
 import itemsJson from "../src/data/items.json";
 import mapsJson from "../src/data/maps.json";
 import recipesJson from "../src/data/recipes.json";
+import dialogueJson from "../src/data/quokka-dialogue.json";
 import type {
   BuildingDefinition,
   AccessoryDefinition,
@@ -113,5 +114,19 @@ describe("content data integrity", () => {
       expect(produced.has(item.id), `${item.id} needs a source`).toBe(true);
       expect(consumed.has(item.id), `${item.id} needs a use`).toBe(true);
     }
+  });
+
+  it("keeps friendly guidance copy varied and complete", () => {
+    const dialogue = dialogueJson as unknown as Record<string, unknown>;
+    for (const key of ["firstClean", "openPath", "gather", "make", "cleanDeep", "mix", "build", "complete"]) {
+      expect(Array.isArray(dialogue[key]), `${key} needs dialogue variants`).toBe(true);
+      expect((dialogue[key] as string[]).length).toBeGreaterThanOrEqual(2);
+    }
+    expect(dialogue.memory).toMatchObject({
+      day: expect.any(String),
+      bed: expect.any(String),
+      recipe: expect.any(String),
+      cleaned: expect.any(String),
+    });
   });
 });

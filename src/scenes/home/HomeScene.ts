@@ -15,7 +15,9 @@ import type {
   RecipeDefinition,
 } from "../../entities/types";
 import { activityForHappiness } from "../../systems/progression";
+import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guidance";
 import { addButton, addPanel, addQuokka, addTitle, showToast } from "../../ui/components";
+import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 
 const buildings = buildingsJson as unknown as BuildingDefinition[];
@@ -25,8 +27,19 @@ const recipes = recipesJson as unknown as RecipeDefinition[];
 const homeSlots = (mapsJson as unknown as { homeSlots: HouseSlotDefinition[] }).homeSlots;
 
 export class HomeScene extends Phaser.Scene {
+  private focusId?: string;
+  private recentEventType?: GameEvent["type"];
+  private intent?: GameCommand;
+  private quokka?: Phaser.GameObjects.Container;
+
   public constructor() {
     super("HomeScene");
+  }
+
+  public init(data: { focusId?: string; recentEventType?: GameEvent["type"]; intent?: GameCommand } = {}): void {
+    this.focusId = data.focusId;
+    this.recentEventType = data.recentEventType;
+    this.intent = data.intent;
   }
 
   public create(): void {
@@ -36,6 +49,16 @@ export class HomeScene extends Phaser.Scene {
     this.drawInventory();
     this.drawShelter();
     this.drawWorkshop();
+    const guidance = getQuokkaGuidance(getGameEngine().snapshot(), {
+      scene: "home",
+      recentEventType: this.recentEventType,
+      intent: this.intent,
+    });
+    addQuokkaGuide(this, guidance, {
+      sceneName: "home",
+      actor: this.quokka,
+      onFollow: (destination) => this.followGuidance(destination),
+    });
   }
 
   private drawBackground(): void {
@@ -50,7 +73,7 @@ export class HomeScene extends Phaser.Scene {
 
   private drawHeader(): void {
     const state = getGameEngine().getState();
-    addQuokka(this, 48, 47).setScale(0.68);
+    this.quokka = addQuokka(this, 48, 47).setScale(0.68);
     addTitle(this, 80, 16, "쿼카의 덤불집", 24);
     this.add.text(82, 49, `${state.day}일 차 · 활동력 ${state.currentActivity}/${state.maxActivity}`, {
       color: "#c8d9d3",
@@ -98,7 +121,7 @@ export class HomeScene extends Phaser.Scene {
     const pileDisabled = state.dailyLeafPileRemaining <= 0;
     addButton(this, 121, 518, 174, 48, `집 앞 잔해 정리 (${state.dailyLeafPileRemaining}/2)`, () => {
       this.runCommand(commands.harvestDailyPile());
-    }, { fill: palette.warmDark, disabled: pileDisabled, fontSize: 13 });
+    }, { fill: palette.warmDark, disabled: pileDisabled, fontSize: 13, highlighted: this.focusId === "daily-pile" });
   }
 
   private drawShelter(): void {
@@ -132,6 +155,7 @@ export class HomeScene extends Phaser.Scene {
         fill: installed ? Phaser.Display.Color.HexStringToColor(building.color).color : 0x39453a,
         hoverFill: installed ? palette.warmDark : palette.grass,
         fontSize: 10,
+        highlighted: this.focusId === slot.id,
       });
     });
 
@@ -178,11 +202,11 @@ export class HomeScene extends Phaser.Scene {
 
     addButton(this, 872, 345, 224, 64, "작업실 열기\n장비 · 배합 · 수첩", () => {
       this.scene.start("WorkshopScene");
-    }, { fill: palette.clean, fontSize: 15 });
+    }, { fill: palette.clean, fontSize: 15, highlighted: this.focusId === "workshop" });
 
     addButton(this, 872, 456, 224, 44, "오늘 일찍 쉬기", () => {
       this.runCommand(commands.endDay());
-    }, { fill: palette.warmDark, fontSize: 13 });
+    }, { fill: palette.warmDark, fontSize: 13, highlighted: this.focusId === "rest" });
     this.add.text(754, 498, "작업실의 제작·배합도 활동력 1을 사용합니다.\n활동력 0이면 자동으로 다음 날이 됩니다.", {
       color: "#93a9a5",
       fontSize: "11px",
@@ -194,11 +218,33 @@ export class HomeScene extends Phaser.Scene {
     const events = getGameEngine().dispatch(command);
     const rejected = events.find((event) => event.type === "RULE_REJECTED");
     const notable = this.notableEvent(events);
-    showToast(this, (rejected ?? notable)?.message ?? "완료했습니다.", rejected ? "error" : "success");
-    if (!rejected) {
-      this.time.delayedCall(events.some((event) => event.type === "DAY_ENDED") ? 900 : 420, () => {
-        if (events.some((event) => event.type === "GAME_COMPLETED")) this.scene.start("ResultScene");
-        else this.scene.restart();
+    if (rejected) {
+      showToast(this, "음… 주머니를 다시 살펴볼게. 필요한 냄새는 수첩에 적어 두자.", "normal", 900);
+      this.time.delayedCall(520, () => this.scene.restart({
+        recentEventType: "RULE_REJECTED",
+        intent: command,
+      }));
+      return;
+    }
+    showToast(this, notable?.message ?? "완료했습니다.", "success");
+    this.time.delayedCall(events.some((event) => event.type === "DAY_ENDED") ? 900 : 420, () => {
+      if (events.some((event) => event.type === "GAME_COMPLETED")) this.scene.start("ResultScene");
+      else this.scene.restart({ recentEventType: notable?.type });
+    });
+  }
+
+  private followGuidance(destination: GuidanceDestination): void {
+    if (destination.scene === "home") {
+      this.scene.restart({ focusId: destination.focusId });
+    } else if (destination.scene === "workshop") {
+      this.scene.start("WorkshopScene", {
+        focusId: destination.focusId,
+        ingredients: destination.ingredients,
+      });
+    } else {
+      this.scene.start("WorkplaceScene", {
+        zoneId: destination.zoneId,
+        focusId: destination.focusId,
       });
     }
   }

@@ -3,9 +3,12 @@ import accessoriesJson from "../../data/accessories.json";
 import itemsJson from "../../data/items.json";
 import recipesJson from "../../data/recipes.json";
 import { commands, type GameCommand } from "../../core/commands";
+import type { GameEvent } from "../../core/events";
 import { getGameEngine } from "../../core/gameContext";
 import type { AccessoryDefinition, ItemDefinition, LiquidId, RecipeDefinition } from "../../entities/types";
+import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guidance";
 import { addButton, addPanel, addTitle, showToast } from "../../ui/components";
+import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
@@ -22,16 +25,22 @@ const liquidNames: Record<LiquidId, string> = {
 export class WorkshopScene extends Phaser.Scene {
   private ingredients: [LiquidId, LiquidId, LiquidId] = ["water", "water", "water"];
   private startupMessage?: string;
+  private focusId?: string;
+  private recentEventType?: GameEvent["type"];
+  private intent?: GameCommand;
 
   public constructor() {
     super("WorkshopScene");
   }
 
-  public init(data: { ingredients?: LiquidId[]; message?: string }): void {
+  public init(data: { ingredients?: LiquidId[]; message?: string; focusId?: string; recentEventType?: GameEvent["type"]; intent?: GameCommand } = {}): void {
     if (data.ingredients?.length === 3) {
       this.ingredients = [...data.ingredients] as [LiquidId, LiquidId, LiquidId];
     }
     this.startupMessage = data.message;
+    this.focusId = data.focusId;
+    this.recentEventType = data.recentEventType;
+    this.intent = data.intent;
   }
 
   public create(): void {
@@ -48,6 +57,15 @@ export class WorkshopScene extends Phaser.Scene {
     this.drawInventory();
     this.drawMixer();
     this.drawEquipment();
+    const guidance = getQuokkaGuidance(getGameEngine().snapshot(), {
+      scene: "workshop",
+      recentEventType: this.recentEventType,
+      intent: this.intent,
+    });
+    addQuokkaGuide(this, guidance, {
+      sceneName: "workshop",
+      onFollow: (destination) => this.followGuidance(destination),
+    });
     if (this.startupMessage) showToast(this, this.startupMessage, "success", 1100);
   }
 
@@ -75,7 +93,7 @@ export class WorkshopScene extends Phaser.Scene {
       addButton(this, 119, 470 + index * 31, 170, 27,
         `${liquidNames[liquidId]} +3 · 보유 ${state.preparedLiquids[liquidId]}`,
         () => this.runCommand(commands.craftRecipe(recipe.id)),
-        { fill: 0x40565a, fontSize: 10 },
+        { fill: 0x40565a, fontSize: 10, highlighted: this.focusId === recipe.id },
       );
     });
   }
@@ -97,7 +115,7 @@ export class WorkshopScene extends Phaser.Scene {
     });
     addButton(this, 470, 257, 260, 48, "이 조합 시험하기 · 활동력 1", () => {
       this.runCommand(commands.mixLiquids([...this.ingredients]));
-    }, { fill: palette.clean, hoverFill: palette.grass, fontSize: 14 });
+    }, { fill: palette.clean, hoverFill: palette.grass, fontSize: 14, highlighted: this.focusId === "mixer" });
 
     this.add.text(246, 296, `레시피 수첩 · 발견 ${state.discoveredRecipes.length}/5`, {
       color: "#f1d99e", fontSize: "14px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
@@ -133,7 +151,7 @@ export class WorkshopScene extends Phaser.Scene {
     );
     addButton(this, 863, 171, 246, 50, nextUpgrade ? `${nextUpgrade.name}\n${this.costLabel(nextUpgrade.costs ?? [])}` : "최고 단계 달성", () => {
       if (nextUpgrade) this.runCommand(commands.craftRecipe(nextUpgrade.id));
-    }, { disabled: !nextUpgrade, fill: palette.clean, fontSize: 12 });
+    }, { disabled: !nextUpgrade, fill: palette.clean, fontSize: 12, highlighted: this.focusId === nextUpgrade?.id });
     this.add.text(736, 211, "액세서리 · 한 번에 하나 장착", {
       color: "#b8cbc6", fontSize: "12px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     });
@@ -149,6 +167,7 @@ export class WorkshopScene extends Phaser.Scene {
         fill: equipped ? palette.grass : Phaser.Display.Color.HexStringToColor(accessory.color).color,
         disabled: !owned && state.cleanerLevel < accessory.requiredCleanerLevel,
         fontSize: 11,
+        highlighted: this.focusId === accessory.id,
       });
     });
     this.add.text(736, 522, "깊은 4층은 알맞은 액세서리와 세정액이 모두 필요합니다.", {
@@ -160,7 +179,12 @@ export class WorkshopScene extends Phaser.Scene {
     const events = getGameEngine().dispatch(command);
     const rejected = events.find((event) => event.type === "RULE_REJECTED");
     if (rejected) {
-      showToast(this, rejected.message, "error", 1200);
+      showToast(this, "흠… 빠진 준비가 있어. 내 수첩으로 냄새를 다시 이어 볼게.", "normal", 900);
+      this.time.delayedCall(520, () => this.scene.restart({
+        ingredients: this.ingredients,
+        recentEventType: "RULE_REJECTED",
+        intent: command,
+      }));
       return;
     }
     if (events.some((event) => event.type === "GAME_COMPLETED")) {
@@ -168,7 +192,27 @@ export class WorkshopScene extends Phaser.Scene {
       return;
     }
     const notable = events.find((event) => ["RECIPE_DISCOVERED", "MIXTURE_ATTEMPTED", "ACCESSORY_CRAFTED", "ACCESSORY_EQUIPPED", "ITEM_CRAFTED", "DAY_ENDED"].includes(event.type));
-    this.scene.restart({ ingredients: this.ingredients, message: notable?.message ?? "완료했습니다." });
+    this.scene.restart({
+      ingredients: this.ingredients,
+      message: notable?.message ?? "완료했습니다.",
+      recentEventType: notable?.type,
+    });
+  }
+
+  private followGuidance(destination: GuidanceDestination): void {
+    if (destination.scene === "workshop") {
+      this.scene.restart({
+        ingredients: destination.ingredients ?? this.ingredients,
+        focusId: destination.focusId,
+      });
+    } else if (destination.scene === "home") {
+      this.scene.start("HomeScene", { focusId: destination.focusId });
+    } else {
+      this.scene.start("WorkplaceScene", {
+        zoneId: destination.zoneId,
+        focusId: destination.focusId,
+      });
+    }
   }
 
   private costLabel(costs: Array<{ itemId: string; amount: number }>): string {
