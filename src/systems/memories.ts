@@ -4,7 +4,7 @@ import buildingsJson from "../data/buildings.json";
 import type { GameEvent } from "../core/events";
 import { gameEvent } from "../core/events";
 import type { GameState } from "../core/gameState";
-import type { BuildingDefinition, HouseSlotDefinition } from "../entities/types";
+import type { BuildingDefinition, HouseAnchorDefinition } from "../entities/types";
 
 export interface QuokkaMemoryDefinition {
   id: string;
@@ -14,7 +14,7 @@ export interface QuokkaMemoryDefinition {
 }
 
 export const memoryDefinitions = memoriesJson as QuokkaMemoryDefinition[];
-const homeSlots = (mapsJson as unknown as { homeSlots: HouseSlotDefinition[] }).homeSlots;
+const homeAnchors = (mapsJson as unknown as { homeAnchors: HouseAnchorDefinition[] }).homeAnchors;
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 
 function hasMemory(state: GameState, id: string): boolean {
@@ -50,9 +50,9 @@ export function reconcileMemories(state: GameState, events: GameEvent[]): GameEv
     if (event.type === "HOME_COMPLETED") add("home-complete");
     if (event.type === "STEP_ONE_COMPLETED") add("step-one");
     if (event.type === "DAY_ENDED") {
-      const hasBed = homeSlots.some((slot) => {
-        if (slot.category !== "bed") return false;
-        const building = buildings.find((candidate) => candidate.id === state.houseSlots[slot.id]);
+      const hasBed = homeAnchors.some((anchor) => {
+        if (anchor.category !== "bed") return false;
+        const building = buildings.find((candidate) => candidate.id === state.homeAnchors[anchor.id]);
         return building?.category === "bed";
       });
       if (hasBed) add("first-bed-sleep");

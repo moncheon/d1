@@ -147,5 +147,77 @@
     "description": "바람이 지나가면 작고 맑은 소리를 내는 장식",
     "spriteKey": "resin-chime",
     "routineKey": "listen-chime"
+  },
+  {
+    "id": "woven_hammock",
+    "name": "엮은 해먹",
+    "category": "bed",
+    "theme": "woven",
+    "happiness": 5,
+    "cost": [{ "itemId": "fiber", "amount": 2 }, { "itemId": "leaf", "amount": 2 }, { "itemId": "grass", "amount": 2 }],
+    "color": "#b5a66a",
+    "description": "섬유와 풀을 느슨하게 엮어 몸을 폭신하게 받쳐 주는 해먹",
+    "spriteKey": "woven-hammock",
+    "routineKey": "sway-hammock"
+  },
+  {
+    "id": "clay_root_wall",
+    "name": "점토 뿌리벽",
+    "category": "wall",
+    "theme": "mineral",
+    "happiness": 5,
+    "cost": [{ "itemId": "clay", "amount": 1 }, { "itemId": "soil", "amount": 3 }, { "itemId": "grass", "amount": 1 }],
+    "color": "#a87354",
+    "description": "굽은 뿌리 사이를 점토로 메워 바람을 포근하게 막는 외피",
+    "spriteKey": "clay-root-wall",
+    "routineKey": "pat-clay-wall"
+  },
+  {
+    "id": "fiber_canopy",
+    "name": "섬유 차양",
+    "category": "roof",
+    "theme": "woven",
+    "happiness": 5,
+    "cost": [{ "itemId": "fiber", "amount": 2 }, { "itemId": "grass", "amount": 4 }],
+    "color": "#d8c77c",
+    "description": "밝은 섬유를 촘촘히 엮어 햇살을 부드럽게 거르는 차양",
+    "spriteKey": "fiber-canopy",
+    "routineKey": "watch-woven-light"
+  },
+  {
+    "id": "moss_mat",
+    "name": "이끼 매트",
+    "category": "path",
+    "theme": "moss",
+    "happiness": 3,
+    "cost": [{ "itemId": "moss", "amount": 1 }, { "itemId": "grass", "amount": 2 }, { "itemId": "soil", "amount": 2 }],
+    "color": "#7e9b4f",
+    "description": "발바닥의 흙을 포근하게 받아 주는 촉촉한 초록 매트",
+    "spriteKey": "moss-mat",
+    "routineKey": "wipe-paws"
+  },
+  {
+    "id": "moss_garden",
+    "name": "이끼 정원",
+    "category": "flowerbed",
+    "theme": "moss",
+    "happiness": 4,
+    "cost": [{ "itemId": "moss", "amount": 1 }, { "itemId": "seed", "amount": 1 }, { "itemId": "plant_enzyme", "amount": 1 }],
+    "color": "#789756",
+    "description": "작은 버섯과 새싹이 함께 자라는 손바닥만 한 이끼 정원",
+    "spriteKey": "moss-garden",
+    "routineKey": "tend-moss-garden"
+  },
+  {
+    "id": "flower_garland",
+    "name": "꽃줄 장식",
+    "category": "decor",
+    "theme": "bloom",
+    "happiness": 6,
+    "cost": [{ "itemId": "flower", "amount": 2 }, { "itemId": "fiber", "amount": 1 }, { "itemId": "grass", "amount": 2 }],
+    "color": "#d78c92",
+    "description": "모아 온 꽃을 엮어 집 냄새와 추억을 함께 매다는 장식",
+    "spriteKey": "flower-garland",
+    "routineKey": "sniff-garland"
   }
 ]

@@ -61,7 +61,7 @@ function openNotebook(
   const title = addTitle(scene, 225, 82, "내 작은 수첩", 25).setColor("#4b392d");
   const close = addButton(scene, 861, 88, 66, 34, "접기", () => overlay.destroy(), {
     fill: palette.warmDark,
-    fontSize: 11,
+    fontSize: 12,
   });
 
   const memory = scene.add.text(225, 119, guidance.memory ?? "내 코와 발이 지나온 길을 잘 기억하고 있어.", {
@@ -94,12 +94,12 @@ function openNotebook(
         color: "#3f352e", fontSize: "12px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
       }));
       needObjects.push(scene.add.text(178, y + 20, `냄새가 나는 곳 · ${need.sources[0] ?? "남은 깊은 오염"}`, {
-        color: "#756654", fontSize: "10px", fontFamily: '"Malgun Gothic", sans-serif', wordWrap: { width: 410 },
+        color: "#756654", fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif', wordWrap: { width: 410 },
       }));
     });
   } else {
     needObjects.push(scene.add.text(154, 342, "필요한 것은 내가 기억해 뒀어. 지금은 표시한 곳으로 가면 돼.", {
-      color: "#756654", fontSize: "11px", fontFamily: '"Malgun Gothic", sans-serif', wordWrap: { width: 420 },
+      color: "#756654", fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif', wordWrap: { width: 420 },
     }));
   }
 
@@ -115,10 +115,10 @@ function openNotebook(
       color: dream.ready ? "#f7f0d4" : "#705e4a", fontSize: "17px", fontStyle: "bold",
     }).setOrigin(0.5);
     const label = scene.add.text(708, y - 14, dream.label, {
-      color: "#453a31", fontSize: "11px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
+      color: "#453a31", fontSize: "12px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     });
     const progress = scene.add.text(708, y + 6, dream.progress, {
-      color: dream.ready ? "#55744d" : "#806f5a", fontSize: "11px", fontFamily: '"Malgun Gothic", sans-serif',
+      color: dream.ready ? "#55744d" : "#806f5a", fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif',
     });
     dreamObjects.push(seed, sprout, label, progress);
   });

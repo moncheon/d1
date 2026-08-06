@@ -101,11 +101,11 @@ export class GameEngine {
       case "HARVEST_DAILY_PILE":
         return harvestDailyPile(this.state);
       case "BUILD_HOUSE":
-        return buildHousePart(this.state, command.slotId, command.buildingId);
+        return buildHousePart(this.state, command.anchorId, command.buildingId);
       case "REPLACE_HOUSE":
-        return [...removeHousePart(this.state, command.slotId), ...buildHousePart(this.state, command.slotId, command.buildingId)];
+        return [...removeHousePart(this.state, command.anchorId), ...buildHousePart(this.state, command.anchorId, command.buildingId)];
       case "REMOVE_HOUSE":
-        return removeHousePart(this.state, command.slotId);
+        return removeHousePart(this.state, command.anchorId);
       case "CRAFT_RECIPE":
         return craftRecipe(this.state, command.recipeId);
       case "MIX_LIQUIDS":

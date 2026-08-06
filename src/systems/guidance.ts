@@ -15,7 +15,7 @@ import type {
   DirtDefinition,
   DirtLayerDefinition,
   DirtTargetDefinition,
-  HouseSlotDefinition,
+  HouseAnchorDefinition,
   ItemDefinition,
   LiquidId,
   RecipeDefinition,
@@ -28,7 +28,7 @@ const buildings = buildingsJson as unknown as BuildingDefinition[];
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const items = itemsJson as unknown as ItemDefinition[];
 const recipes = recipesJson as unknown as RecipeDefinition[];
-const maps = mapsJson as unknown as { homeSlots: HouseSlotDefinition[]; zones: ZoneDefinition[] };
+const maps = mapsJson as unknown as { homeAnchors: HouseAnchorDefinition[]; zones: ZoneDefinition[] };
 const dialogue = dialogueJson as unknown as {
   firstClean: string[];
   openPath: string[];
@@ -149,8 +149,8 @@ function sourceLabels(state: GameState, itemId: string): string[] {
     }
   }
 
-  for (const slot of maps.homeSlots) {
-    const buildingId = state.houseSlots[slot.id];
+  for (const anchor of maps.homeAnchors) {
+    const buildingId = state.homeAnchors[anchor.id];
     const building = buildings.find((candidate) => candidate.id === buildingId);
     if (building?.cost.some((cost) => cost.itemId === itemId)) labels.push(`${building.name}을 회수`);
   }
@@ -197,7 +197,7 @@ function memoryLine(state: GameState, context: GuidanceContext): string | undefi
   const key = context.recentEventType ? eventKey[context.recentEventType] : undefined;
   if (key && dialogue.memory[key]) return dialogue.memory[key];
 
-  const installed = Object.values(state.houseSlots).filter((id): id is string => Boolean(id));
+  const installed = Object.values(state.homeAnchors).filter((id): id is string => Boolean(id));
   if (installed.includes("leaf_bed")) return dialogue.memory.bed;
   if (installed.includes("leaf_roof")) return dialogue.memory.roof;
   if (installed.filter((id) => id === "shrub_wall").length >= 2) return dialogue.memory.walls;
@@ -387,19 +387,19 @@ function guideForMaterialNeed(state: GameState, goal: string, needs: QuokkaNeed[
   const source = findMaterialSource(state, need.itemId);
   if (source) return guideForSource(state, goal, need, needs, source, depth);
 
-  const refundableSlot = maps.homeSlots.find((slot) => {
-    const building = buildings.find((candidate) => candidate.id === state.houseSlots[slot.id]);
+  const refundableAnchor = maps.homeAnchors.find((anchor) => {
+    const building = buildings.find((candidate) => candidate.id === state.homeAnchors[anchor.id]);
     return building?.cost.some((cost) => cost.itemId === need.itemId);
   });
-  if (refundableSlot) {
-    const building = buildings.find((candidate) => candidate.id === state.houseSlots[refundableSlot.id]);
+  if (refundableAnchor) {
+    const building = buildings.find((candidate) => candidate.id === state.homeAnchors[refundableAnchor.id]);
     return {
-      id: `refund-${refundableSlot.id}-${need.itemId}`,
+      id: `refund-${refundableAnchor.id}-${need.itemId}`,
       mood: "restful",
       thought: `${building?.name ?? "집 한 조각"}을 잠깐 풀면 ${need.name}을 다시 쓸 수 있어.`,
       detail: `더 찾을 곳이 남지 않았지만 재료는 사라지지 않았어. 설치한 것을 회수하면 전부 주머니로 돌아와.`,
       needs,
-      destination: { scene: "home", label: `${building?.name ?? "집 부품"} 회수하기`, focusId: refundableSlot.id },
+      destination: { scene: "home", label: `${building?.name ?? "집 부품"} 회수하기`, focusId: refundableAnchor.id },
     };
   }
   return {
@@ -437,38 +437,38 @@ function surfaceGoalDraft(state: GameState, zone: ZoneDefinition, targetRate: nu
   };
 }
 
-function firstAffordableBuilding(state: GameState): { slot: HouseSlotDefinition; building: BuildingDefinition } | undefined {
-  const candidates = maps.homeSlots
-    .filter((slot) => state.houseSlots[slot.id] === null)
-    .flatMap((slot) => slot.buildingOptions.map((buildingId) => ({
-      slot,
+function firstAffordableBuilding(state: GameState): { anchor: HouseAnchorDefinition; building: BuildingDefinition } | undefined {
+  const candidates = maps.homeAnchors
+    .filter((anchor) => state.homeAnchors[anchor.id] === null)
+    .flatMap((anchor) => anchor.buildingOptions.map((buildingId) => ({
+      anchor,
       building: buildings.find((building) => building.id === buildingId),
     })))
-    .filter((entry): entry is { slot: HouseSlotDefinition; building: BuildingDefinition } => Boolean(entry.building));
+    .filter((entry): entry is { anchor: HouseAnchorDefinition; building: BuildingDefinition } => Boolean(entry.building));
   return candidates
     .filter(({ building }) => needsForCosts(state, building.cost).length === 0)
     .sort((left, right) => right.building.happiness - left.building.happiness)[0];
 }
 
 function buildingGoalDraft(state: GameState): GuidanceDraft {
-  const candidates = maps.homeSlots
-    .filter((slot) => state.houseSlots[slot.id] === null)
-    .flatMap((slot) => slot.buildingOptions.map((buildingId) => {
+  const candidates = maps.homeAnchors
+    .filter((anchor) => state.homeAnchors[anchor.id] === null)
+    .flatMap((anchor) => anchor.buildingOptions.map((buildingId) => {
       const building = buildings.find((candidate) => candidate.id === buildingId);
       const needs = building ? needsForCosts(state, building.cost) : [];
-      return { slot, building, needs, missing: needs.reduce((sum, need) => sum + need.missing, 0) };
+      return { anchor, building, needs, missing: needs.reduce((sum, need) => sum + need.missing, 0) };
     }))
-    .filter((entry): entry is { slot: HouseSlotDefinition; building: BuildingDefinition; needs: QuokkaNeed[]; missing: number } => Boolean(entry.building))
+    .filter((entry): entry is { anchor: HouseAnchorDefinition; building: BuildingDefinition; needs: QuokkaNeed[]; missing: number } => Boolean(entry.building))
     .sort((left, right) => left.missing - right.missing || right.building.happiness - left.building.happiness);
   const candidate = candidates[0];
   if (!candidate) return freePlayDraft(state);
   if (candidate.needs.length > 0) return guideForMaterialNeed(state, candidate.building.name, candidate.needs);
   return {
-    id: `build-${candidate.slot.id}`,
+    id: `build-${candidate.anchor.id}`,
     mood: "proud",
-    thought: stablePick(dialogue.build, `${state.day}:${candidate.slot.id}`),
+    thought: stablePick(dialogue.build, `${state.day}:${candidate.anchor.id}`),
     detail: `${candidate.building.name}을 놓으면 포근함이 ${candidate.building.happiness}만큼 자라. 재료는 나중에 전부 회수할 수도 있어.`,
-    destination: { scene: "home", label: `${candidate.building.name} 놓기`, focusId: candidate.slot.id },
+    destination: { scene: "home", label: `${candidate.building.name} 놓기`, focusId: candidate.anchor.id },
   };
 }
 
@@ -525,11 +525,11 @@ function guidanceForIntent(state: GameState, intent: GameCommand): GuidanceDraft
       const needs = needsForCosts(state, building.cost);
       if (needs.length > 0) return guideForMaterialNeed(state, building.name, needs);
       return {
-        id: `build-${intent.slotId}`,
+        id: `build-${intent.anchorId}`,
         mood: "hopeful",
-        thought: stablePick(dialogue.build, `${state.day}:${intent.slotId}`),
+        thought: stablePick(dialogue.build, `${state.day}:${intent.anchorId}`),
         detail: `${building.name} 재료를 모두 챙겼어. 방금 고른 자리에 놓아 보자.`,
-        destination: { scene: "home", label: `${building.name} 놓기`, focusId: intent.slotId },
+        destination: { scene: "home", label: `${building.name} 놓기`, focusId: intent.anchorId },
       };
     }
     case "CRAFT_RECIPE": {
@@ -609,11 +609,11 @@ function selectGuidance(state: GameState, context: GuidanceContext): GuidanceDra
     const affordable = firstAffordableBuilding(state);
     if (affordable) {
       return {
-        id: `evening-build-${affordable.slot.id}`,
+        id: `evening-build-${affordable.anchor.id}`,
         mood: "proud",
         thought: `${affordable.building.name} 재료가 가방 안에서 바스락거려. 잠들기 전에 같이 놓아 볼까?`,
         detail: `오늘 모은 것으로 바로 지을 수 있어. 완성하면 포근함이 ${affordable.building.happiness}만큼 자라고, 그 기분은 내일 활동력으로 이어져.`,
-        destination: { scene: "home", label: `${affordable.building.name} 함께 짓기`, focusId: affordable.slot.id },
+        destination: { scene: "home", label: `${affordable.building.name} 함께 짓기`, focusId: affordable.anchor.id },
       };
     }
     return {
@@ -648,11 +648,11 @@ function selectGuidance(state: GameState, context: GuidanceContext): GuidanceDra
     const affordable = firstAffordableBuilding(state);
     if (affordable) {
       return {
-        id: `build-${affordable.slot.id}`,
+        id: `build-${affordable.anchor.id}`,
         mood: "proud",
-        thought: stablePick(dialogue.build, `${state.day}:${affordable.slot.id}`),
+        thought: stablePick(dialogue.build, `${state.day}:${affordable.anchor.id}`),
         detail: `${affordable.building.name} 재료가 모였어. 처음 놓는 집 한 조각이 내일의 활동력도 키워 줄 거야.`,
-        destination: { scene: "home", label: `${affordable.building.name} 놓기`, focusId: affordable.slot.id },
+        destination: { scene: "home", label: `${affordable.building.name} 놓기`, focusId: affordable.anchor.id },
       };
     }
   }

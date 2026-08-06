@@ -6,6 +6,7 @@ import { gameEvent, type GameEvent } from "../core/events";
 import type { DirtDefinition, DirtLayerDefinition, ZoneDefinition } from "../entities/types";
 import { addItem } from "./inventory";
 import type { CleaningFeedback } from "../core/commands";
+import { cleaningAvailability, type CleaningChallengeKind } from "./availability";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
@@ -25,10 +26,11 @@ function rewardLayer(
   targetId: string,
   layer: number,
   rewards: DirtDefinition["rewards"],
+  multiplier = 1,
 ): Record<string, number> {
   const gained: Record<string, number> = {};
   for (const reward of rewards) {
-    const amount = deterministicAmount(reward.min, reward.max, `${state.day}:${targetId}:${layer}:${reward.itemId}`);
+    const amount = deterministicAmount(reward.min, reward.max, `${state.day}:${targetId}:${layer}:${reward.itemId}`) * multiplier;
     if (amount > 0) {
       addItem(state, reward.itemId, amount);
       gained[reward.itemId] = amount;
@@ -57,11 +59,9 @@ export function cleanDirt(
   solutionId?: string,
   feedback?: CleaningFeedback,
 ): GameEvent[] {
-  if (state.currentActivity <= 0) {
-    throw new GameRuleError("NO_ACTIVITY", "활동력이 없습니다. 집에서 쉬어야 합니다.");
-  }
-  if (!state.unlockedZones.includes(zoneId)) {
-    throw new GameRuleError("ZONE_LOCKED", "아직 열리지 않은 구역입니다.");
+  const availability = cleaningAvailability(state, zoneId, targetId, solutionId);
+  if (!availability.enabled) {
+    throw new GameRuleError(availability.errorCode ?? "CLEANING_BLOCKED", availability.message);
   }
 
   const zone = zones.find((candidate) => candidate.id === zoneId);
@@ -80,15 +80,16 @@ export function cleanDirt(
   }
 
   if (targetState.surfaceCleaned) {
-    return cleanDeepLayer(state, zoneId, targetId, dirt, solutionId, feedback);
+    return cleanDeepLayer(state, zoneId, targetId, dirt, solutionId, feedback, availability.challenge);
   }
 
   targetState.surfaceCleaned = true;
   targetState.deepestLayer = 1;
   state.currentActivity -= 1;
-  const gained = rewardLayer(state, target.id, 1, dirt.rewards);
+  const rewardMultiplier = availability.challenge ? 2 : 1;
+  const gained = rewardLayer(state, target.id, 1, dirt.rewards, rewardMultiplier);
   const validFeedback = feedback?.technique === dirt.interaction ? feedback : undefined;
-  const carefulBonus = validFeedback?.quality === "careful" ? dirt.rewards[0] : undefined;
+  const carefulBonus = availability.challenge && validFeedback?.quality === "careful" ? dirt.rewards[0] : undefined;
   if (carefulBonus) {
     addItem(state, carefulBonus.itemId, 1);
     gained[carefulBonus.itemId] = (gained[carefulBonus.itemId] ?? 0) + 1;
@@ -104,6 +105,8 @@ export function cleanDirt(
       quality: validFeedback?.quality ?? "standard",
       durationMs: validFeedback?.durationMs ?? 0,
       assisted: validFeedback?.assisted ?? false,
+      challenge: availability.challenge ?? null,
+      rewardMultiplier,
       bonusGained: carefulBonus ? { [carefulBonus.itemId]: 1 } : {},
     }),
     gameEvent("MATERIAL_GAINED", "청소한 곳에서 재료를 얻었습니다.", { gained }),
@@ -123,38 +126,29 @@ function cleanDeepLayer(
   dirt: DirtDefinition,
   solutionId?: string,
   feedback?: CleaningFeedback,
+  challenge?: CleaningChallengeKind,
 ): GameEvent[] {
   const targetState = state.zoneCleaningState[zoneId]?.targets[targetId];
   if (!targetState) {
     throw new GameRuleError("TARGET_STATE_NOT_FOUND", "청소 상태를 찾을 수 없습니다.");
   }
   const layer = dirt.layers.find((candidate) => candidate.level === targetState.deepestLayer + 1);
-  if (!layer) {
-    throw new GameRuleError("FULLY_CLEAN", "이 오염물은 모든 층을 청소했습니다.");
-  }
-  if (state.cleanerLevel < layer.requiredCleanerLevel) {
-    throw new GameRuleError(
-      "CLEANER_TOO_WEAK",
-      `${layer.name}: 청소기 ${layer.requiredCleanerLevel}단계가 필요합니다.`,
-    );
-  }
-  if (layer.requiredAccessoryId && !state.equippedAccessories.includes(layer.requiredAccessoryId)) {
-    throw new GameRuleError("ACCESSORY_REQUIRED", `${layer.name}: ${layer.hint}`);
-  }
+  if (!layer) throw new GameRuleError("FULLY_CLEAN", "이 오염물은 모든 층을 청소했습니다.");
   if (layer.requiredSolutionId) {
-    if (solutionId !== layer.requiredSolutionId) {
-      throw new GameRuleError("SOLUTION_REQUIRED", `${layer.name}: ${layer.hint}`);
-    }
-    if ((state.preparedSolutions[solutionId] ?? 0) <= 0) {
-      throw new GameRuleError("NO_SOLUTION", "선택한 세정액이 없습니다. 작업실에서 조합하세요.");
-    }
+    if (!solutionId) throw new GameRuleError("SOLUTION_REQUIRED", `${layer.name}: ${layer.hint}`);
     state.preparedSolutions[solutionId] = (state.preparedSolutions[solutionId] ?? 0) - 1;
   }
 
   targetState.deepestLayer = layer.level;
   state.currentActivity -= 1;
-  const gained = rewardLayer(state, targetId, layer.level, layer.rewards);
+  const rewardMultiplier = challenge ? 2 : 1;
+  const gained = rewardLayer(state, targetId, layer.level, layer.rewards, rewardMultiplier);
   const validFeedback = feedback?.technique === dirt.interaction ? feedback : undefined;
+  const carefulBonus = challenge && validFeedback?.quality === "careful" ? layer.rewards[0] : undefined;
+  if (carefulBonus) {
+    addItem(state, carefulBonus.itemId, 1);
+    gained[carefulBonus.itemId] = (gained[carefulBonus.itemId] ?? 0) + 1;
+  }
   recordCleaning(state, dirt, validFeedback);
   return [
     gameEvent("DEEP_LAYER_CLEANED", `${dirt.name}의 ${layer.name}을(를) 제거했습니다.`, {
@@ -168,6 +162,9 @@ function cleanDeepLayer(
       quality: validFeedback?.quality ?? "standard",
       durationMs: validFeedback?.durationMs ?? 0,
       assisted: validFeedback?.assisted ?? false,
+      challenge: challenge ?? null,
+      rewardMultiplier,
+      bonusGained: carefulBonus ? { [carefulBonus.itemId]: 1 } : {},
     }),
     gameEvent("MATERIAL_GAINED", "깊은 층에서 새로운 재료를 얻었습니다.", { gained }),
     gameEvent("ACTIVITY_CHANGED", `활동력 ${state.currentActivity} 남음`, {

@@ -10,7 +10,7 @@ import type {
   BuildingDefinition,
   AccessoryDefinition,
   DirtDefinition,
-  HouseSlotDefinition,
+  HouseAnchorDefinition,
   ItemDefinition,
   RecipeDefinition,
   PipeCellDefinition,
@@ -22,7 +22,7 @@ const dirt = dirtJson as unknown as DirtDefinition[];
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const recipes = recipesJson as unknown as RecipeDefinition[];
-const maps = mapsJson as unknown as { pipeNetwork: PipeCellDefinition[]; homeSlots: HouseSlotDefinition[]; zones: ZoneDefinition[] };
+const maps = mapsJson as unknown as { pipeNetwork: PipeCellDefinition[]; homeAnchors: HouseAnchorDefinition[]; zones: ZoneDefinition[] };
 
 function duplicateIds(values: Array<{ id: string }>): string[] {
   const seen = new Set<string>();
@@ -41,7 +41,7 @@ describe("content data integrity", () => {
     expect(duplicateIds(buildings)).toEqual([]);
     expect(duplicateIds(accessories)).toEqual([]);
     expect(duplicateIds(recipes)).toEqual([]);
-    expect(duplicateIds(maps.homeSlots)).toEqual([]);
+    expect(duplicateIds(maps.homeAnchors)).toEqual([]);
     expect(duplicateIds(maps.zones)).toEqual([]);
     expect(duplicateIds(maps.zones.flatMap((zone) => zone.targets))).toEqual([]);
     expect(duplicateIds(maps.pipeNetwork)).toEqual([]);
@@ -92,9 +92,14 @@ describe("content data integrity", () => {
       expect(zone.targets.some((target) => target.id === zone.completionTargetId)).toBe(true);
     }
     expect(maps.pipeNetwork.filter((cell) => cell.zoneId).every((cell) => zoneIds.has(cell.zoneId!))).toBe(true);
-    for (const slot of maps.homeSlots) {
-      expect(slot.buildingOptions).toHaveLength(2);
-      expect(slot.buildingOptions.every((buildingId) => buildingById.get(buildingId)?.category === slot.category)).toBe(true);
+    expect(maps.homeAnchors).toHaveLength(9);
+    for (const anchor of maps.homeAnchors) {
+      expect(anchor.buildingOptions).toHaveLength(3);
+      expect(anchor.buildingOptions.every((buildingId) => buildingById.get(buildingId)?.category === anchor.category)).toBe(true);
+      expect(anchor.x).toBeGreaterThanOrEqual(220);
+      expect(anchor.x).toBeLessThanOrEqual(768);
+      expect(anchor.y).toBeGreaterThanOrEqual(150);
+      expect(anchor.y).toBeLessThanOrEqual(500);
     }
   });
 

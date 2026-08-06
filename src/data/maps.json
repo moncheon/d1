@@ -5,27 +5,16 @@
     { "id": "bend", "column": 1, "row": 1, "shape": "corner", "rotation": 90, "zoneId": "curved-drain" },
     { "id": "connector", "column": 1, "row": 3, "shape": "corner", "rotation": 270, "zoneId": "blocked-connector" }
   ],
-  "homeSlots": [
-    { "id": "bed-1", "category": "bed", "buildingOptions": ["leaf_bed", "moss_nest"], "x": 0, "y": 0 },
-    { "id": "wall-1", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall"], "x": 1, "y": 0 },
-    { "id": "wall-2", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall"], "x": 2, "y": 0 },
-    { "id": "wall-3", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall"], "x": 3, "y": 0 },
-    { "id": "wall-4", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall"], "x": 4, "y": 0 },
-    { "id": "roof-1", "category": "roof", "buildingOptions": ["leaf_roof", "flower_canopy"], "x": 0, "y": 1 },
-    { "id": "roof-2", "category": "roof", "buildingOptions": ["leaf_roof", "flower_canopy"], "x": 1, "y": 1 },
-    { "id": "roof-3", "category": "roof", "buildingOptions": ["leaf_roof", "flower_canopy"], "x": 2, "y": 1 },
-    { "id": "path-1", "category": "path", "buildingOptions": ["dirt_path", "clay_steps"], "x": 3, "y": 1 },
-    { "id": "path-2", "category": "path", "buildingOptions": ["dirt_path", "clay_steps"], "x": 4, "y": 1 },
-    { "id": "path-3", "category": "path", "buildingOptions": ["dirt_path", "clay_steps"], "x": 0, "y": 2 },
-    { "id": "path-4", "category": "path", "buildingOptions": ["dirt_path", "clay_steps"], "x": 1, "y": 2 },
-    { "id": "path-5", "category": "path", "buildingOptions": ["dirt_path", "clay_steps"], "x": 2, "y": 2 },
-    { "id": "flower-1", "category": "flowerbed", "buildingOptions": ["sprout_bed", "flower_bed"], "x": 3, "y": 2 },
-    { "id": "flower-2", "category": "flowerbed", "buildingOptions": ["sprout_bed", "flower_bed"], "x": 4, "y": 2 },
-    { "id": "flower-3", "category": "flowerbed", "buildingOptions": ["sprout_bed", "flower_bed"], "x": 0, "y": 3 },
-    { "id": "decor-1", "category": "decor", "buildingOptions": ["moss_decor", "resin_chime"], "x": 1, "y": 3 },
-    { "id": "decor-2", "category": "decor", "buildingOptions": ["moss_decor", "resin_chime"], "x": 2, "y": 3 },
-    { "id": "decor-3", "category": "decor", "buildingOptions": ["moss_decor", "resin_chime"], "x": 3, "y": 3 },
-    { "id": "decor-4", "category": "decor", "buildingOptions": ["moss_decor", "resin_chime"], "x": 4, "y": 3 }
+  "homeAnchors": [
+    { "id": "rest-nook", "role": "rest", "layer": "interior", "category": "bed", "buildingOptions": ["leaf_bed", "moss_nest", "woven_hammock"], "x": 420, "y": 397, "angle": 0, "scale": 0.48, "depth": 48 },
+    { "id": "shell-left", "role": "shell", "layer": "frame", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall", "clay_root_wall"], "x": 366, "y": 318, "angle": -32, "scale": 0.48, "depth": 35 },
+    { "id": "shell-back", "role": "shell", "layer": "frame", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall", "clay_root_wall"], "x": 510, "y": 248, "angle": 0, "scale": 0.48, "depth": 34 },
+    { "id": "shell-right", "role": "shell", "layer": "frame", "category": "wall", "buildingOptions": ["shrub_wall", "woven_wall", "clay_root_wall"], "x": 654, "y": 318, "angle": 32, "scale": 0.48, "depth": 35 },
+    { "id": "canopy-top", "role": "canopy", "layer": "frame", "category": "roof", "buildingOptions": ["leaf_roof", "flower_canopy", "fiber_canopy"], "x": 510, "y": 194, "angle": 0, "scale": 0.5, "depth": 37 },
+    { "id": "threshold", "role": "threshold", "layer": "foreground", "category": "path", "buildingOptions": ["dirt_path", "clay_steps", "moss_mat"], "x": 515, "y": 438, "angle": 0, "scale": 0.46, "depth": 72 },
+    { "id": "garden-pocket", "role": "garden", "layer": "interior", "category": "flowerbed", "buildingOptions": ["sprout_bed", "flower_bed", "moss_garden"], "x": 610, "y": 392, "angle": 0, "scale": 0.44, "depth": 50 },
+    { "id": "charm-left", "role": "charm", "layer": "ornament", "category": "decor", "buildingOptions": ["moss_decor", "resin_chime", "flower_garland"], "x": 425, "y": 294, "angle": -6, "scale": 0.36, "depth": 44 },
+    { "id": "charm-right", "role": "charm", "layer": "ornament", "category": "decor", "buildingOptions": ["moss_decor", "resin_chime", "flower_garland"], "x": 595, "y": 294, "angle": 6, "scale": 0.36, "depth": 44 }
   ],
   "zones": [
     {

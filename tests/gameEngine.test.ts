@@ -24,8 +24,12 @@ describe("GameEngine core loop", () => {
     expect(events.map((event) => event.type)).toContain("DIRT_CLEANED");
     expect(state.currentActivity).toBe(4);
     expect(state.zoneCleaningState["pipe-entrance"]?.targets["entrance-01"]?.surfaceCleaned).toBe(true);
-    expect(state.inventory.leaf).toBeGreaterThanOrEqual(2);
-    expect(state.inventory.leaf).toBeLessThanOrEqual(4);
+    expect(state.inventory.leaf).toBeGreaterThanOrEqual(4);
+    expect(state.inventory.leaf).toBeLessThanOrEqual(8);
+    expect(events.find((event) => event.type === "DIRT_CLEANED")?.data).toMatchObject({
+      challenge: "surface_first",
+      rewardMultiplier: 2,
+    });
   });
 
   it("does not charge twice for an already cleaned target", () => {
@@ -116,8 +120,8 @@ describe("GameEngine core loop", () => {
     initialState.inventory = { leaf: 20, grass: 20, soil: 20 };
     const engine = new GameEngine({ initialState });
 
-    engine.dispatch(commands.buildHouse("bed-1", "leaf_bed"));
-    engine.dispatch(commands.buildHouse("wall-1", "shrub_wall"));
+    engine.dispatch(commands.buildHouse("rest-nook", "leaf_bed"));
+    engine.dispatch(commands.buildHouse("shell-left", "shrub_wall"));
 
     expect(engine.getState().happiness).toBe(6);
     expect(engine.getState().maxActivity).toBe(5);
@@ -135,13 +139,13 @@ describe("GameEngine core loop", () => {
     initialState.inventory = { leaf: 20, grass: 20, moss: 1 };
     const engine = new GameEngine({ initialState });
 
-    engine.dispatch(commands.buildHouse("bed-1", "leaf_bed"));
-    const events = engine.dispatch(commands.replaceHouse("bed-1", "moss_nest"));
+    engine.dispatch(commands.buildHouse("rest-nook", "leaf_bed"));
+    const events = engine.dispatch(commands.replaceHouse("rest-nook", "moss_nest"));
 
     expect(events.some((event) => event.type === "HOUSE_REMOVED")).toBe(true);
     expect(events.some((event) => event.type === "HOUSE_BUILT")).toBe(true);
     expect(engine.getState()).toMatchObject({
-      houseSlots: { "bed-1": "moss_nest" },
+      homeAnchors: { "rest-nook": "moss_nest" },
       inventory: { leaf: 18, grass: 17, moss: 0 },
       happiness: 4,
     });
@@ -166,6 +170,51 @@ describe("GameEngine core loop", () => {
     });
   });
 
+  it("skips the challenge and bonus multiplier after that dirt type was experienced", () => {
+    const initialState = createInitialGameState();
+    initialState.currentActivity = 10;
+    initialState.maxActivity = 10;
+    const engine = new GameEngine({ initialState });
+    engine.dispatch(commands.cleanDirt("pipe-entrance", "entrance-01"));
+
+    const events = engine.dispatch(commands.cleanDirt("pipe-entrance", "entrance-03"));
+
+    expect(events.find((event) => event.type === "DIRT_CLEANED")?.data).toMatchObject({
+      challenge: null,
+      rewardMultiplier: 1,
+      quality: "standard",
+    });
+  });
+
+  it("doubles the first rare-layer reward and adds one item for careful completion", () => {
+    const standardState = createInitialGameState();
+    standardState.cleanerLevel = 3;
+    standardState.currentActivity = 10;
+    standardState.maxActivity = 10;
+    standardState.equippedAccessories = ["narrow_nozzle"];
+    standardState.preparedSolutions.resin_release_solution = 1;
+    const target = standardState.zoneCleaningState["pipe-entrance"]?.targets["entrance-01"];
+    if (!target) throw new Error("rare layer fixture missing");
+    target.surfaceCleaned = true;
+    target.deepestLayer = 3;
+    const assisted = new GameEngine({ initialState: standardState });
+    const careful = new GameEngine({ initialState: standardState });
+
+    assisted.dispatch(commands.cleanDirt("pipe-entrance", "entrance-01", "resin_release_solution", {
+      technique: "sweep", quality: "standard", durationMs: 5000, assisted: true,
+    }));
+    const events = careful.dispatch(commands.cleanDirt("pipe-entrance", "entrance-01", "resin_release_solution", {
+      technique: "sweep", quality: "careful", durationMs: 2200, assisted: false,
+    }));
+
+    expect(careful.getState().inventory.resin).toBe((assisted.getState().inventory.resin ?? 0) + 1);
+    expect(events.find((event) => event.type === "DEEP_LAYER_CLEANED")?.data).toMatchObject({
+      challenge: "rare_layer_first",
+      rewardMultiplier: 2,
+      bonusGained: { resin: 1 },
+    });
+  });
+
   it("stores shared memories once even when the same kind of event repeats", () => {
     const initialState = createInitialGameState();
     initialState.currentActivity = 5;
@@ -182,14 +231,14 @@ describe("GameEngine core loop", () => {
     const initialState = createInitialGameState();
     initialState.inventory = { leaf: 4, grass: 2 };
     const engine = new GameEngine({ initialState });
-    engine.dispatch(commands.buildHouse("bed-1", "leaf_bed"));
+    engine.dispatch(commands.buildHouse("rest-nook", "leaf_bed"));
     const activityAfterBuild = engine.getState().currentActivity;
 
-    engine.dispatch(commands.removeHouse("bed-1"));
+    engine.dispatch(commands.removeHouse("rest-nook"));
 
     expect(engine.getState().inventory).toMatchObject({ leaf: 4, grass: 2 });
     expect(engine.getState().currentActivity).toBe(activityAfterBuild);
-    expect(engine.getState().houseSlots["bed-1"]).toBeNull();
+    expect(engine.getState().homeAnchors["rest-nook"]).toBeNull();
   });
 
   it("allows hand-building after work ends without consuming activity", () => {
@@ -199,10 +248,36 @@ describe("GameEngine core loop", () => {
     initialState.inventory = { leaf: 4, grass: 2 };
     const engine = new GameEngine({ initialState });
 
-    const events = engine.dispatch(commands.buildHouse("bed-1", "leaf_bed"));
+    const events = engine.dispatch(commands.buildHouse("rest-nook", "leaf_bed"));
 
     expect(events.some((event) => event.type === "HOUSE_BUILT")).toBe(true);
     expect(engine.getState()).toMatchObject({ dayPhase: "evening", currentActivity: 0, happiness: 3 });
+  });
+
+  it("completes the home when all nine living anchors are filled", () => {
+    const initialState = createInitialGameState();
+    initialState.inventory = { leaf: 99, grass: 99, soil: 99, seed: 99, moss: 99 };
+    const engine = new GameEngine({ initialState });
+    const choices: Array<[string, string]> = [
+      ["rest-nook", "leaf_bed"],
+      ["shell-left", "shrub_wall"],
+      ["shell-back", "shrub_wall"],
+      ["shell-right", "shrub_wall"],
+      ["canopy-top", "leaf_roof"],
+      ["threshold", "dirt_path"],
+      ["garden-pocket", "sprout_bed"],
+      ["charm-left", "moss_decor"],
+      ["charm-right", "moss_decor"],
+    ];
+
+    let finalEvents = engine.dispatch(commands.buildHouse(choices[0]![0], choices[0]![1]));
+    for (const [anchorId, buildingId] of choices.slice(1)) {
+      finalEvents = engine.dispatch(commands.buildHouse(anchorId, buildingId));
+    }
+
+    expect(finalEvents.some((event) => event.type === "HOME_COMPLETED")).toBe(true);
+    expect(engine.getState()).toMatchObject({ happiness: 44, homeCompletionCelebrated: true });
+    expect(engine.getState().memories.some((memory) => memory.id === "home-complete")).toBe(true);
   });
 
   it("autosaves successful commands", () => {

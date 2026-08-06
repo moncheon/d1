@@ -13,8 +13,8 @@ const config: Phaser.Types.Core.GameConfig = {
   width: 1024,
   height: 576,
   backgroundColor: "#243238",
-  pixelArt: true,
-  antialias: false,
+  pixelArt: false,
+  antialias: true,
   scene: [BootScene, HomeScene, WorkshopScene, PipeMapScene, WorkplaceScene, ResultScene],
   scale: {
     mode: Phaser.Scale.FIT,

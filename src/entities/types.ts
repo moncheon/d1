@@ -2,7 +2,7 @@ export type ItemId = string;
 export type BuildingId = string;
 export type DirtTypeId = string;
 export type ZoneId = string;
-export type HouseSlotId = string;
+export type HouseAnchorId = string;
 export type LiquidId = "water" | "leaf_enzyme" | "grass_ferment" | "clay_binder";
 export type CleanTechnique = "sweep" | "loosen" | "soak";
 export type CleanQuality = "standard" | "careful";
@@ -59,12 +59,20 @@ export interface BuildingDefinition {
   routineKey: string;
 }
 
-export interface HouseSlotDefinition {
-  id: HouseSlotId;
+export type HouseAnchorRole = "rest" | "shell" | "canopy" | "threshold" | "garden" | "charm";
+export type HouseAnchorLayer = "frame" | "interior" | "ornament" | "foreground";
+
+export interface HouseAnchorDefinition {
+  id: HouseAnchorId;
+  role: HouseAnchorRole;
+  layer: HouseAnchorLayer;
   category: BuildingCategory;
   buildingOptions: BuildingId[];
   x: number;
   y: number;
+  angle: number;
+  scale: number;
+  depth: number;
 }
 
 export interface DirtTargetDefinition {

@@ -1,6 +1,7 @@
 import {
   cloneGameState,
   mergeWithInitialState,
+  SAVE_VERSION,
   type GameState,
 } from "../core/gameState";
 
@@ -24,7 +25,11 @@ export class BrowserSaveRepository implements SaveRepository {
   public load(): GameState | null {
     try {
       const raw = this.storage.getItem(BrowserSaveRepository.SAVE_KEY);
-      return raw ? mergeWithInitialState(JSON.parse(raw) as unknown) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { saveVersion?: number };
+      const merged = mergeWithInitialState(parsed);
+      if (merged && parsed.saveVersion !== SAVE_VERSION) this.save(merged);
+      return merged;
     } catch {
       return null;
     }
@@ -54,4 +59,3 @@ export class MemorySaveRepository implements SaveRepository {
     this.state = null;
   }
 }
-

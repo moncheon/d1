@@ -140,7 +140,7 @@ export class WorkshopScene extends Phaser.Scene {
           ? `${liquidNames[liquidId]} +3 · 보유 ${state.preparedLiquids[liquidId]}`
           : `${liquidNames[liquidId]} · ${this.availabilityLabel(availability)}`,
         () => this.runCommand(commands.craftRecipe(recipe.id)),
-        { disabled: !availability.enabled, fill: 0x40565a, fontSize: 10, highlighted: this.focusId === recipe.id },
+        { disabled: !availability.enabled, fill: 0x40565a, fontSize: 12, highlighted: this.focusId === recipe.id },
       );
     });
   }
@@ -150,7 +150,7 @@ export class WorkshopScene extends Phaser.Scene {
     addPanel(this, 230, 96, 480, 462, 0x334447, 0.91);
     addTitle(this, 246, 112, "세 방울 조합대", 18);
     this.add.text(246, 142, "순서는 결과에 영향을 주지 않습니다. 물은 무료입니다.", {
-      color: "#b8cbc6", fontSize: "11px", fontFamily: '"Malgun Gothic", sans-serif',
+      color: "#b8cbc6", fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif',
     });
     this.ingredients.forEach((ingredient, index) => {
       const amount = ingredient === "water" ? "∞" : `${state.preparedLiquids[ingredient]}`;
@@ -178,7 +178,7 @@ export class WorkshopScene extends Phaser.Scene {
     });
     const failedAttempts = state.mixtureAttempts.filter((attempt) => !attempt.success).length;
     this.add.text(694, 297, `실험 ${state.mixtureAttempts.length}회 · 실패 ${failedAttempts}회`, {
-      color: "#aebfba", fontSize: "10px", fontFamily: '"Malgun Gothic", sans-serif',
+      color: "#aebfba", fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif',
     }).setOrigin(1, 0);
     recipes.filter((recipe) => recipe.kind === "mixture").forEach((recipe, index) => {
       const discovered = state.discoveredRecipes.includes(recipe.id);
@@ -190,7 +190,7 @@ export class WorkshopScene extends Phaser.Scene {
         ? `${recipe.name} · ${ingredients}\n${recipe.effect ?? "깊은 오염 제거"}`
         : `미발견 · ${recipe.hint ?? "오염 흔적을 관찰하세요."}`, {
         color: discovered ? "#e8f2dc" : "#aebfba",
-        fontSize: discovered ? "9px" : "10px",
+        fontSize: "12px",
         lineSpacing: 1,
         fontFamily: '"Malgun Gothic", sans-serif',
         wordWrap: { width: 418 },
@@ -231,12 +231,12 @@ export class WorkshopScene extends Phaser.Scene {
       }, {
         fill: equipped ? palette.grass : Phaser.Display.Color.HexStringToColor(accessory.color).color,
         disabled: !availability.enabled,
-        fontSize: 11,
+        fontSize: 12,
         highlighted: this.focusId === accessory.id,
       });
     });
-    this.add.text(736, 522, "깊은 4층은 알맞은 액세서리와 세정액이 모두 필요합니다.", {
-      color: "#94aaa5", fontSize: "10px", wordWrap: { width: 250 }, fontFamily: '"Malgun Gothic", sans-serif',
+    this.add.text(736, 500, "4층은 알맞은 장비와 세정액이 모두 필요해요.", {
+      color: "#b8c9c4", fontSize: "12px", wordWrap: { width: 250 }, fontFamily: '"Malgun Gothic", sans-serif',
     });
   }
 

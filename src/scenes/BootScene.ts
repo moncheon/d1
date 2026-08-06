@@ -6,6 +6,10 @@ import { createInitialGameState } from "../core/gameState";
 import { BrowserSaveRepository } from "../systems/saving";
 import { calculateHappiness } from "../systems/progression";
 import { memoryDefinitions } from "../systems/memories";
+import mapsJson from "../data/maps.json";
+import type { HouseAnchorDefinition } from "../entities/types";
+
+const homeAnchors = (mapsJson as unknown as { homeAnchors: HouseAnchorDefinition[] }).homeAnchors;
 
 export class BootScene extends Phaser.Scene {
   public constructor() {
@@ -17,10 +21,13 @@ export class BootScene extends Phaser.Scene {
     this.load.image("pipe-organic", "assets/visuals/pipe-organic.png");
     this.load.image("pipe-mineral", "assets/visuals/pipe-mineral.png");
     this.load.spritesheet("quokka-poses", "assets/visuals/quokka-poses.png", {
-      frameWidth: 364,
-      frameHeight: 360,
+      frameWidth: 362,
+      frameHeight: 362,
     });
     this.load.image("house-objects", "assets/visuals/house-objects.png");
+    this.load.image("home-shell-base", "assets/visuals/home-shell-base.png");
+    this.load.image("home-dome-back", "assets/visuals/home-dome-back.png");
+    this.load.image("home-items-new", "assets/visuals/home-items-new.png");
   }
 
   public create(): void {
@@ -44,6 +51,25 @@ export class BootScene extends Phaser.Scene {
         (yEdges[row + 1] ?? 1254) - (yEdges[row] ?? 0),
       );
     });
+    const newHouseTexture = this.textures.get("home-items-new");
+    const newBuildingFrames = [
+      "woven_hammock", "clay_root_wall", "fiber_canopy",
+      "moss_mat", "moss_garden", "flower_garland",
+    ];
+    const newXEdges = [0, 418, 836, 1254];
+    const newYEdges = [0, 627, 1254];
+    newBuildingFrames.forEach((buildingId, index) => {
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+      newHouseTexture.add(
+        buildingId,
+        0,
+        newXEdges[column] ?? 0,
+        newYEdges[row] ?? 0,
+        (newXEdges[column + 1] ?? 1254) - (newXEdges[column] ?? 0),
+        (newYEdges[row + 1] ?? 1254) - (newYEdges[row] ?? 0),
+      );
+    });
     const saveRepository = new BrowserSaveRepository(window.localStorage);
     const state = saveRepository.load() ?? createInitialGameState();
     const qa = import.meta.env.DEV ? new URLSearchParams(window.location.search) : undefined;
@@ -51,14 +77,21 @@ export class BootScene extends Phaser.Scene {
       state.unlockedZones = ["pipe-entrance", "curved-drain", "blocked-connector"];
     }
     if (qa?.get("home") === "full") {
-      for (const slotId of Object.keys(state.houseSlots)) {
-        state.houseSlots[slotId] = slotId.startsWith("bed") ? "moss_nest"
-          : slotId.startsWith("wall") ? "woven_wall"
-            : slotId.startsWith("roof") ? "flower_canopy"
-              : slotId.startsWith("path") ? "clay_steps"
-                : slotId.startsWith("flower") ? "flower_bed"
-                  : "resin_chime";
+      for (const anchor of homeAnchors) {
+        state.homeAnchors[anchor.id] = anchor.role === "rest" ? "woven_hammock"
+          : anchor.role === "shell" ? "clay_root_wall"
+            : anchor.role === "canopy" ? "fiber_canopy"
+              : anchor.role === "threshold" ? "moss_mat"
+                : anchor.role === "garden" ? "moss_garden"
+                  : anchor.id === "charm-left" ? "flower_garland" : "resin_chime";
       }
+      state.happiness = calculateHappiness(state);
+    } else if (qa?.get("home") === "partial") {
+      state.homeAnchors["rest-nook"] = "moss_nest";
+      state.homeAnchors["shell-left"] = "woven_wall";
+      state.homeAnchors["canopy-top"] = "leaf_roof";
+      state.homeAnchors["garden-pocket"] = "moss_garden";
+      state.homeAnchors["charm-right"] = "flower_garland";
       state.happiness = calculateHappiness(state);
     }
     if (qa?.get("memories") === "all") {
@@ -80,7 +113,10 @@ export class BootScene extends Phaser.Scene {
         demoCleaning: qa?.get("cleaning") === "1",
       });
     } else {
-      this.scene.start("HomeScene", { demoPicker: qa?.get("modal") === "builder" });
+      this.scene.start("HomeScene", {
+        demoPicker: qa?.get("modal") === "builder",
+        decorateMode: qa?.get("decorate") === "1",
+      });
     }
   }
 }

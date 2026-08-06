@@ -107,7 +107,7 @@ describe("Quokka guidance", () => {
   it("turns shared home history into a remembered thought", () => {
     const state = createInitialGameState();
     cleanSurface(state, "pipe-entrance", 1);
-    state.houseSlots["bed-1"] = "leaf_bed";
+    state.homeAnchors["rest-nook"] = "leaf_bed";
 
     const guidance = getQuokkaGuidance(state, { scene: "home" });
 
@@ -122,8 +122,8 @@ describe("Quokka guidance", () => {
 
     const guidance = getQuokkaGuidance(state, { scene: "home", recentEventType: "WORK_ENDED" });
 
-    expect(guidance.id).toBe("evening-build-bed-1");
-    expect(guidance.destination).toMatchObject({ scene: "home", focusId: "bed-1" });
+    expect(guidance.id).toBe("evening-build-rest-nook");
+    expect(guidance.destination).toMatchObject({ scene: "home", focusId: "rest-nook" });
     expect(guidance.thought).toContain("낙엽 침대");
     expect(guidance.suggestions).toHaveLength(1);
   });
@@ -148,7 +148,7 @@ describe("Quokka guidance", () => {
     const guidance = getQuokkaGuidance(state, {
       scene: "home",
       recentEventType: "RULE_REJECTED",
-      intent: { type: "BUILD_HOUSE", slotId: "bed-1", buildingId: "leaf_bed" },
+      intent: { type: "BUILD_HOUSE", anchorId: "rest-nook", buildingId: "leaf_bed" },
     });
 
     expect(guidance.needs).toEqual(expect.arrayContaining([

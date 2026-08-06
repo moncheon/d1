@@ -10,7 +10,7 @@ import { getGameEngine } from "../../core/gameContext";
 import type {
   BuildingDefinition,
   AccessoryDefinition,
-  HouseSlotDefinition,
+  HouseAnchorDefinition,
   ItemDefinition,
   RecipeDefinition,
 } from "../../entities/types";
@@ -28,7 +28,7 @@ const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const items = itemsJson as unknown as ItemDefinition[];
 const recipes = recipesJson as unknown as RecipeDefinition[];
-const homeSlots = (mapsJson as unknown as { homeSlots: HouseSlotDefinition[] }).homeSlots;
+const homeAnchors = (mapsJson as unknown as { homeAnchors: HouseAnchorDefinition[] }).homeAnchors;
 
 export class HomeScene extends Phaser.Scene {
   private focusId?: string;
@@ -37,11 +37,12 @@ export class HomeScene extends Phaser.Scene {
   private quokka?: Phaser.GameObjects.Container;
   private returning = false;
   private wokeUp = false;
-  private builtSlotId?: string;
+  private builtAnchorId?: string;
   private happinessDelta = 0;
   private isSleeping = false;
   private demoPicker = false;
-  private readonly slotObjects = new Map<string, Phaser.GameObjects.Container>();
+  private decorateMode = false;
+  private readonly anchorObjects = new Map<string, Phaser.GameObjects.Container>();
 
   public constructor() {
     super("HomeScene");
@@ -53,20 +54,22 @@ export class HomeScene extends Phaser.Scene {
     intent?: GameCommand;
     returning?: boolean;
     wokeUp?: boolean;
-    builtSlotId?: string;
+    builtAnchorId?: string;
     happinessDelta?: number;
     demoPicker?: boolean;
+    decorateMode?: boolean;
   } = {}): void {
     this.focusId = data.focusId;
     this.recentEventType = data.recentEventType;
     this.intent = data.intent;
     this.returning = data.returning ?? false;
     this.wokeUp = data.wokeUp ?? false;
-    this.builtSlotId = data.builtSlotId;
+    this.builtAnchorId = data.builtAnchorId;
     this.happinessDelta = data.happinessDelta ?? 0;
     this.isSleeping = false;
     this.demoPicker = data.demoPicker ?? false;
-    this.slotObjects.clear();
+    this.decorateMode = data.decorateMode ?? Boolean(data.focusId && homeAnchors.some((anchor) => anchor.id === data.focusId));
+    this.anchorObjects.clear();
   }
 
   public create(): void {
@@ -76,6 +79,7 @@ export class HomeScene extends Phaser.Scene {
     this.drawInventory();
     this.drawShelter();
     this.drawWorkshop();
+    this.applyHomeRoutinePose();
     this.playArrivalMoment();
     bindAmbient(this, "home", getGameEngine().getState().preferences.masterVolume);
     const guidance = getQuokkaGuidance(getGameEngine().snapshot(), {
@@ -88,10 +92,9 @@ export class HomeScene extends Phaser.Scene {
       actor: this.quokka,
       onFollow: (destination) => this.followGuidance(destination),
     });
-    this.applyHomeRoutinePose();
     if (this.demoPicker) {
-      const slot = homeSlots[0];
-      if (slot) this.openBuildingPicker(slot);
+      const anchor = homeAnchors[0];
+      if (anchor) this.openBuildingPicker(anchor);
     }
   }
 
@@ -115,17 +118,20 @@ export class HomeScene extends Phaser.Scene {
       fontSize: "14px",
       fontFamily: '"Malgun Gothic", sans-serif',
     });
-    this.add.text(465, 31, `포근함 ${state.happiness} · 내일 ${activityForHappiness(state.happiness)}회`, {
+    this.add.text(408, 31, `포근함 ${state.happiness} · 내일 ${activityForHappiness(state.happiness)}회`, {
       color: "#f0d69d",
       fontSize: "14px",
       fontStyle: "bold",
       fontFamily: '"Malgun Gothic", sans-serif',
     });
     const evening = state.dayPhase === "evening";
-    addButton(this, 665, 45, 120, 42, `추억 ${state.memories.length}`, () => this.openMemoryAlbum(), {
+    addButton(this, 588, 45, 96, 42, this.decorateMode ? "생활 보기" : "꾸미기", () => {
+      this.scene.restart({ decorateMode: !this.decorateMode });
+    }, { fill: this.decorateMode ? 0x8a7654 : 0x5c765f, fontSize: 12 });
+    addButton(this, 690, 45, 96, 42, `추억 ${state.memories.length}`, () => this.openMemoryAlbum(), {
       fill: 0x6f5b3c, fontSize: 12,
     });
-    addButton(this, 754, 45, 46, 42, "⚙", () => this.openPreferences(), { fill: 0x40565a, fontSize: 16 });
+    addButton(this, 766, 45, 42, 42, "⚙", () => this.openPreferences(), { fill: 0x40565a, fontSize: 16 });
     addButton(this, 902, 45, 188, 52, evening ? "오늘 일은 다 했어" : "배관 지도로 출근  →", () => {
       this.scene.start("PipeMapScene");
     }, { fill: palette.warmDark, hoverFill: palette.warm, fontSize: 15, disabled: evening });
@@ -137,7 +143,7 @@ export class HomeScene extends Phaser.Scene {
     addTitle(this, 31, 120, "재료 가방", 18);
     this.add.text(31, 148, "필요한 냄새를 골라 찾아가요.", {
       color: "#d1c2ab",
-      fontSize: "11px",
+      fontSize: "12px",
       fontFamily: '"Malgun Gothic", sans-serif',
     });
 
@@ -168,39 +174,66 @@ export class HomeScene extends Phaser.Scene {
 
   private drawShelter(): void {
     const state = getGameEngine().getState();
-    this.add.text(230, 108, "우리 손으로 자라는 덤불집", {
+    this.add.text(230, 108, this.decorateMode ? "꾸밀 곳을 골라 주세요" : "가운데에서 함께 살아가는 덤불집", {
       color: "#fff0ca", fontSize: "17px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     }).setShadow(0, 2, "#3b2819", 4);
-    this.quokka = addQuokka(this, this.returning ? 735 : 650, 430).setDepth(80);
+    this.add.ellipse(510, 409, 344, 112, 0x392516, 0.42).setDepth(24);
+    this.add.image(510, 334, "home-dome-back")
+      .setDisplaySize(500, 375)
+      .setTint(0xe7c486)
+      .setDepth(28);
+    this.add.ellipse(510, 377, 304, 92, 0xd58a3e, 0.1).setDepth(29);
 
-    homeSlots.forEach((slot) => {
-      const buildingId = state.houseSlots[slot.id];
-      const building = buildings.find((candidate) => candidate.id === (buildingId ?? slot.buildingOptions[0]));
-      if (!building) return;
-      const installed = buildingId !== null;
-      const x = 285 + slot.x * 79;
-      const y = 220 + slot.y * 67;
-      const foundation = this.add.ellipse(x, y + 15, 62, 30, installed ? 0x2e2015 : 0xe8d49d, installed ? 0.35 : 0.17)
-        .setStrokeStyle(this.focusId === slot.id ? 3 : 1, 0xf6e5ad, installed ? 0.22 : 0.68)
-        .setDepth(22)
-        .setInteractive({ useHandCursor: true });
-      foundation.on("pointerdown", () => this.openBuildingPicker(slot));
-      if (!installed) {
-        this.add.text(x, y + 10, "+", { color: "#ffe7ac", fontSize: "22px", fontStyle: "bold" })
-          .setOrigin(0.5).setDepth(23);
+    homeAnchors.forEach((anchor) => {
+      const buildingId = state.homeAnchors[anchor.id];
+      const building = buildings.find((candidate) => candidate.id === buildingId);
+      if (building) {
+        const object = this.addBuildingShape(anchor.x, anchor.y, building, true)
+          .setScale(anchor.scale)
+          .setAngle(anchor.angle)
+          .setDepth(anchor.depth);
+        this.anchorObjects.set(anchor.id, object);
       }
-      const object = this.addBuildingShape(x, y, building, installed).setDepth(24);
-      this.slotObjects.set(slot.id, object);
+
+      if (!this.decorateMode) return;
+      const focused = this.focusId === anchor.id;
+      const marker = this.add.circle(anchor.x, anchor.y, focused ? 30 : 25, building ? 0x76906c : 0xe2c887, building ? 0.3 : 0.42)
+        .setStrokeStyle(focused ? 4 : 2, focused ? 0xffe6a6 : 0xf7e3b1, 0.95)
+        .setDepth(125)
+        .setInteractive({ useHandCursor: true });
+      marker.on("pointerdown", () => this.openBuildingPicker(anchor));
+      const label = this.add.text(anchor.x, anchor.y, building ? "✦" : "+", {
+        color: "#fff3cc", fontSize: focused ? "22px" : "18px", fontStyle: "bold",
+        fontFamily: '"Malgun Gothic", sans-serif',
+      }).setOrigin(0.5).setDepth(126);
+      label.setInteractive({ useHandCursor: true }).on("pointerdown", () => this.openBuildingPicker(anchor));
     });
 
-    this.add.text(244, 500, `집의 포근함 ${state.happiness} · 같은 재료라도 모양과 쿼카의 생활이 달라져요`, {
+    this.quokka = addQuokka(this, this.returning ? 710 : 520, 400).setDepth(65);
+
+    const frontRim = this.add.graphics().setDepth(70);
+    const rimPoints = (lift: number): Phaser.Math.Vector2[] => Array.from({ length: 25 }, (_, index) => {
+      const t = index / 24;
+      return new Phaser.Math.Vector2(334 + t * 352, 403 + Math.sin(t * Math.PI) * lift);
+    });
+    frontRim.lineStyle(9, 0x4d2d17, 0.95);
+    frontRim.strokePoints(rimPoints(68), false, false);
+    frontRim.lineStyle(4, 0xb16f2f, 0.95);
+    frontRim.strokePoints(rimPoints(58), false, false);
+
+    this.add.text(244, 500, this.decorateMode
+      ? "빛나는 자리를 누르면 세 가지 재료 모습을 비교할 수 있어요."
+      : `집의 포근함 ${state.happiness} · 가운데 생활과 반구 외피가 함께 자라요.`, {
       color: "#ffe6ad",
-      fontSize: "11px",
+      fontSize: "12px",
       fontFamily: '"Malgun Gothic", sans-serif',
     }).setShadow(0, 2, "#3b2819", 3);
-    if (this.builtSlotId) {
-      const built = this.slotObjects.get(this.builtSlotId);
-      if (built) this.tweens.add({ targets: built, scale: { from: 0.35, to: 1 }, angle: { from: -5, to: 0 }, duration: 520, ease: "Back.Out" });
+    if (this.builtAnchorId) {
+      const built = this.anchorObjects.get(this.builtAnchorId);
+      const anchor = homeAnchors.find((candidate) => candidate.id === this.builtAnchorId);
+      if (built && anchor && !state.preferences.reducedMotion) {
+        this.tweens.add({ targets: built, scale: { from: anchor.scale * 0.35, to: anchor.scale }, duration: 520, ease: "Back.Out" });
+      }
     }
   }
 
@@ -248,19 +281,37 @@ export class HomeScene extends Phaser.Scene {
     }, { fill: palette.warmDark, fontSize: 13, highlighted: this.focusId === "rest" });
     this.add.text(786, 446, "잠들면 집의 포근함이\n내일 활동력으로 이어져요.", {
       color: "#93a9a5",
-      fontSize: "11px",
+      fontSize: "12px",
       fontFamily: '"Malgun Gothic", sans-serif',
     });
   }
 
   private applyHomeRoutinePose(): void {
     const state = getGameEngine().getState();
-    const installed = Object.values(state.houseSlots).filter((id): id is string => Boolean(id));
-    if (state.dayPhase === "evening") setQuokkaPose(this.quokka, 11);
-    else if (installed.includes("flower_bed") || installed.includes("sprout_bed")) setQuokkaPose(this.quokka, 2);
-    else if (installed.includes("resin_chime") || installed.includes("moss_decor")) setQuokkaPose(this.quokka, 10);
-    else if (installed.length >= 10) setQuokkaPose(this.quokka, 9);
-    else setQuokkaPose(this.quokka, 0);
+    const installed = Object.values(state.homeAnchors).filter((id): id is string => Boolean(id));
+    const rest = homeAnchors.find((anchor) => anchor.role === "rest" && state.homeAnchors[anchor.id]);
+    const garden = homeAnchors.find((anchor) => anchor.role === "garden" && state.homeAnchors[anchor.id]);
+    const charm = homeAnchors.find((anchor) => anchor.role === "charm" && state.homeAnchors[anchor.id]);
+    if (this.returning) {
+      setQuokkaPose(this.quokka, 7);
+      return;
+    }
+    if (state.dayPhase === "evening" && rest) {
+      this.quokka?.setPosition(rest.x + 34, rest.y + 12);
+      setQuokkaPose(this.quokka, 11);
+    } else if (garden) {
+      this.quokka?.setPosition(garden.x - 42, garden.y + 20);
+      setQuokkaPose(this.quokka, 2);
+    } else if (charm) {
+      this.quokka?.setPosition(charm.x + 18, charm.y + 92);
+      setQuokkaPose(this.quokka, 10);
+    } else if (rest) {
+      this.quokka?.setPosition(rest.x + 36, rest.y + 18);
+      setQuokkaPose(this.quokka, installed.length >= 7 ? 9 : 0);
+    } else {
+      this.quokka?.setPosition(520, 410);
+      setQuokkaPose(this.quokka, 0);
+    }
   }
 
   private runCommand(command: GameCommand): void {
@@ -272,6 +323,8 @@ export class HomeScene extends Phaser.Scene {
       this.time.delayedCall(520, () => this.scene.restart({
         recentEventType: "RULE_REJECTED",
         intent: command,
+        decorateMode: command.type === "BUILD_HOUSE" || command.type === "REPLACE_HOUSE" || command.type === "REMOVE_HOUSE",
+        focusId: "anchorId" in command ? command.anchorId : undefined,
       }));
       return;
     }
@@ -284,16 +337,19 @@ export class HomeScene extends Phaser.Scene {
     });
   }
 
-  private openBuildingPicker(slot: HouseSlotDefinition): void {
+  private openBuildingPicker(anchor: HouseAnchorDefinition): void {
     const state = getGameEngine().getState();
-    const currentId = state.houseSlots[slot.id];
-    const options = slot.buildingOptions
+    const currentId = state.homeAnchors[anchor.id];
+    const currentBuilding = buildings.find((building) => building.id === currentId);
+    const availableAmount = (itemId: string): number => (state.inventory[itemId] ?? 0)
+      + (currentBuilding?.cost.find((entry) => entry.itemId === itemId)?.amount ?? 0);
+    const options = anchor.buildingOptions
       .map((id) => buildings.find((building) => building.id === id))
       .filter((building): building is BuildingDefinition => Boolean(building));
     const overlay = this.add.container(0, 0).setDepth(1800);
     const veil = this.add.rectangle(512, 288, 1024, 576, 0x14100c, 0.8).setInteractive();
-    const paper = this.add.rectangle(512, 292, 690, 402, 0xefe0bd, 1).setStrokeStyle(4, 0x8c633e, 1);
-    const title = this.add.text(512, 116, currentId ? "이 자리를 다시 꾸며 볼까?" : "어떤 집 조각을 놓을까?", {
+    const paper = this.add.rectangle(512, 292, 850, 442, 0xefe0bd, 1).setStrokeStyle(4, 0x8c633e, 1);
+    const title = this.add.text(512, 88, currentId ? "이 자리를 다시 꾸며 볼까?" : "어떤 재료의 모습을 놓을까?", {
       color: "#4b3525", fontSize: "22px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     }).setOrigin(0.5);
     overlay.add([veil, paper, title]);
@@ -301,38 +357,38 @@ export class HomeScene extends Phaser.Scene {
     veil.on("pointerdown", close);
 
     options.forEach((building, index) => {
-      const x = 365 + index * 294;
+      const x = 300 + index * 212;
       const selected = currentId === building.id;
-      const card = this.add.rectangle(x, 292, 258, 280, selected ? 0xbdd09d : 0xf8edcf, 1)
+      const affordable = building.cost.every((entry) => availableAmount(entry.itemId) >= entry.amount);
+      const card = this.add.rectangle(x, 292, 196, 324, selected ? 0xbdd09d : 0xf8edcf, 1)
         .setStrokeStyle(selected ? 4 : 2, selected ? 0x6e8c59 : 0xb39163, 1);
-      const preview = this.addBuildingShape(x, 205, building, true).setScale(1.35);
-      const name = this.add.text(x, 272, `${building.name}  ♥${building.happiness}`, {
-        color: "#3e3025", fontSize: "18px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
+      const preview = this.addBuildingShape(x, 178, building, true).setScale(0.72);
+      const name = this.add.text(x, 252, `${building.name}  ♥${building.happiness}`, {
+        color: "#3e3025", fontSize: "16px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
       }).setOrigin(0.5);
-      const description = this.add.text(x, 300, building.description, {
-        color: "#6d5846", fontSize: "12px", align: "center", wordWrap: { width: 222 },
+      const description = this.add.text(x, 278, building.description, {
+        color: "#6d5846", fontSize: "12px", align: "center", wordWrap: { width: 170 },
         fontFamily: '"Malgun Gothic", sans-serif',
       }).setOrigin(0.5, 0);
-      const cost = this.add.text(x, 354, building.cost.map((entry) => `${this.itemName(entry.itemId)} ${entry.amount}`).join(" · "), {
-        color: "#815f37", fontSize: "12px", fontStyle: "bold", align: "center", wordWrap: { width: 220 },
+      const cost = this.add.text(x, 348, building.cost.map((entry) => `${this.itemName(entry.itemId)} ${availableAmount(entry.itemId)}/${entry.amount}`).join(" · ") + (currentId ? "\n회수 재료 포함" : ""), {
+        color: affordable ? "#60723f" : "#9a563e", fontSize: "12px", fontStyle: "bold", align: "center", wordWrap: { width: 174 },
         fontFamily: '"Malgun Gothic", sans-serif',
       }).setOrigin(0.5);
-      const choose = addButton(this, x, 390, 210, 42, selected ? "지금 놓인 모습" : currentId ? "재료 돌려받고 바꾸기" : "이 모습으로 짓기", () => {
+      const choose = addButton(this, x, 410, 168, 42, selected ? "지금 놓인 모습" : affordable ? currentId ? "이 모습으로 바꾸기" : "이 모습으로 짓기" : "재료 더 모으기", () => {
         if (selected) return;
         close();
-        if (currentId) this.runCommand(commands.replaceHouse(slot.id, building.id));
-        else this.startConstruction(slot, building);
+        this.startConstruction(anchor, building, Boolean(currentId));
       }, { fill: selected ? 0x71856a : palette.warmDark, disabled: selected, fontSize: 12 });
       overlay.add([card, preview, name, description, cost, choose]);
     });
 
-    const closeButton = addButton(this, 780, 112, 86, 34, "닫기", close, { fill: palette.inkSoft, fontSize: 11 });
+    const closeButton = addButton(this, 880, 88, 78, 34, "닫기", close, { fill: palette.inkSoft, fontSize: 12 });
     overlay.add(closeButton);
     if (currentId) {
-      const remove = addButton(this, 512, 462, 210, 36, "부품 회수하기", () => {
+      const remove = addButton(this, 512, 488, 210, 36, "부품 회수하기", () => {
         close();
-        this.runCommand(commands.removeHouse(slot.id));
-      }, { fill: 0x7d5544, fontSize: 11 });
+        this.runCommand(commands.removeHouse(anchor.id));
+      }, { fill: 0x7d5544, fontSize: 12 });
       overlay.add(remove);
     }
   }
@@ -358,14 +414,14 @@ export class HomeScene extends Phaser.Scene {
       const definition = memoryDefinitions.find((candidate) => candidate.id === entry.id);
       if (!definition) return;
       const y = 190 + index * 66;
-      const day = this.add.text(325, y, `${entry.day}일 차`, { color: "#9a734d", fontSize: "11px", fontStyle: "bold" });
+      const day = this.add.text(325, y, `${entry.day}일 차`, { color: "#9a734d", fontSize: "12px", fontStyle: "bold" });
       const label = this.add.text(390, y - 6, definition.title, { color: "#49382b", fontSize: "15px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif' });
-      const body = this.add.text(390, y + 18, definition.text, { color: "#75604e", fontSize: "11px", wordWrap: { width: 380 }, fontFamily: '"Malgun Gothic", sans-serif' });
+      const body = this.add.text(390, y + 18, definition.text, { color: "#75604e", fontSize: "12px", wordWrap: { width: 380 }, fontFamily: '"Malgun Gothic", sans-serif' });
       overlay.add([day, label, body]);
     });
     const close = (): void => overlay.destroy(true);
     veil.on("pointerdown", close);
-    overlay.add(addButton(this, 818, 88, 78, 34, "덮기", close, { fill: palette.warmDark, fontSize: 11 }));
+    overlay.add(addButton(this, 818, 88, 78, 34, "덮기", close, { fill: palette.warmDark, fontSize: 12 }));
   }
 
   private openPreferences(): void {
@@ -385,14 +441,20 @@ export class HomeScene extends Phaser.Scene {
     overlay.add(addButton(this, 512, 215, 340, 46, state.preferences.masterVolume > 0 ? "소리 켜짐 · 누르면 끄기" : "소리 꺼짐 · 누르면 켜기", () => apply(commands.updatePreferences({ masterVolume: state.preferences.masterVolume > 0 ? 0 : 0.7 })), { fill: 0x6d8063, fontSize: 13 }));
     overlay.add(addButton(this, 512, 273, 340, 46, `간편 청소 ${state.preferences.simpleCleaning ? "켜짐" : "꺼짐"}`, () => apply(commands.updatePreferences({ simpleCleaning: !state.preferences.simpleCleaning })), { fill: 0x6d8063, fontSize: 13 }));
     overlay.add(addButton(this, 512, 331, 340, 46, `모션 줄이기 ${state.preferences.reducedMotion ? "켜짐" : "꺼짐"}`, () => apply(commands.updatePreferences({ reducedMotion: !state.preferences.reducedMotion })), { fill: 0x6d8063, fontSize: 13 }));
-    overlay.add(addButton(this, 512, 390, 150, 36, "닫기", close, { fill: palette.warmDark, fontSize: 11 }));
+    overlay.add(addButton(this, 512, 390, 150, 36, "닫기", close, { fill: palette.warmDark, fontSize: 12 }));
   }
 
-  private startConstruction(slot: HouseSlotDefinition, building: BuildingDefinition): void {
+  private startConstruction(anchor: HouseAnchorDefinition, building: BuildingDefinition, replacing: boolean): void {
     const state = getGameEngine().getState();
-    const missing = building.cost.some((cost) => (state.inventory[cost.itemId] ?? 0) < cost.amount);
+    const currentBuilding = replacing
+      ? buildings.find((candidate) => candidate.id === state.homeAnchors[anchor.id])
+      : undefined;
+    const missing = building.cost.some((cost) => {
+      const refundable = currentBuilding?.cost.find((entry) => entry.itemId === cost.itemId)?.amount ?? 0;
+      return (state.inventory[cost.itemId] ?? 0) + refundable < cost.amount;
+    });
     if (missing) {
-      this.runCommand(commands.buildHouse(slot.id, building.id));
+      this.runCommand(replacing ? commands.replaceHouse(anchor.id, building.id) : commands.buildHouse(anchor.id, building.id));
       return;
     }
 
@@ -412,7 +474,9 @@ export class HomeScene extends Phaser.Scene {
       shade.destroy(); panel.destroy(); preview.destroy(); title.destroy(); progress.destroy(); action.destroy(); cancel.destroy();
     };
     const finish = (): void => {
-      const events = getGameEngine().dispatch(commands.buildHouse(slot.id, building.id));
+      const events = getGameEngine().dispatch(replacing
+        ? commands.replaceHouse(anchor.id, building.id)
+        : commands.buildHouse(anchor.id, building.id));
       const rejected = events.find((event) => event.type === "RULE_REJECTED");
       if (rejected) {
         close();
@@ -425,7 +489,7 @@ export class HomeScene extends Phaser.Scene {
       close();
       this.scene.restart({
         recentEventType: events.some((event) => event.type === "HOME_COMPLETED") ? "HOME_COMPLETED" : "HOUSE_BUILT",
-        builtSlotId: slot.id,
+        builtAnchorId: anchor.id,
         happinessDelta: delta,
       });
     };
@@ -452,11 +516,21 @@ export class HomeScene extends Phaser.Scene {
     building: BuildingDefinition,
     installed: boolean,
   ): Phaser.GameObjects.Container {
-    if (this.textures.exists("house-objects") && this.textures.get("house-objects").has(building.id)) {
-      const sprite = this.add.image(0, -12, "house-objects", building.id)
-        .setDisplaySize(building.category === "wall" ? 82 : 88, building.category === "wall" ? 110 : 117)
+    const textureKey = this.textures.exists("home-items-new") && this.textures.get("home-items-new").has(building.id)
+      ? "home-items-new"
+      : "house-objects";
+    if (this.textures.exists(textureKey) && this.textures.get(textureKey).has(building.id)) {
+      const parts: Phaser.GameObjects.GameObject[] = [];
+      if (installed && ["bed", "path", "flowerbed"].includes(building.category)) {
+        parts.push(this.add.ellipse(0, 38, 112, 24, 0x24170e, 0.32));
+      } else if (installed && ["wall", "roof", "decor"].includes(building.category)) {
+        parts.push(this.add.ellipse(0, 4, 150, 118, Phaser.Display.Color.HexStringToColor(building.color).color, 0.13));
+      }
+      const sprite = this.add.image(0, -12, textureKey, building.id)
+        .setDisplaySize(building.category === "wall" ? 180 : 190, building.category === "wall" ? 210 : 205)
         .setAlpha(installed ? 1 : 0.22);
-      return this.add.container(x, y, [sprite]);
+      parts.push(sprite);
+      return this.add.container(x, y, parts);
     }
     const color = Phaser.Display.Color.HexStringToColor(building.color).color;
     const alpha = installed ? 1 : 0.22;
@@ -509,12 +583,12 @@ export class HomeScene extends Phaser.Scene {
     this.isSleeping = true;
     playSoundCue("sleep", getGameEngine().getState().preferences.masterVolume);
     const state = getGameEngine().getState();
-    const bedSlot = homeSlots.find((slot) => slot.category === "bed" && state.houseSlots[slot.id]);
-    const targetX = bedSlot ? 285 + bedSlot.x * 79 : 610;
-    const targetY = bedSlot ? 220 + bedSlot.y * 67 : 455;
-    if (!bedSlot) this.add.ellipse(targetX, targetY + 18, 90, 28, 0x9b7747, 0.8).setDepth(20);
+    const bedAnchor = homeAnchors.find((anchor) => anchor.role === "rest" && state.homeAnchors[anchor.id]);
+    const targetX = bedAnchor ? bedAnchor.x + 28 : 510;
+    const targetY = bedAnchor ? bedAnchor.y + 12 : 430;
+    if (!bedAnchor) this.add.ellipse(targetX, targetY + 18, 90, 28, 0x9b7747, 0.8).setDepth(40);
     if (showRestToast) {
-      showToast(this, bedSlot ? "내가 만든 침대가 오늘은 더 포근해." : "오늘은 낙엽을 둥글게 모아 쉬어야겠다.", "normal", 1100);
+      showToast(this, bedAnchor ? "내가 만든 침상이 오늘은 더 포근해." : "오늘은 가지 아래 낙엽을 둥글게 모아 쉬어야겠다.", "normal", 1100);
     }
     this.tweens.add({
       targets: this.quokka,

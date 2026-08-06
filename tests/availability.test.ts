@@ -3,7 +3,12 @@ import accessoriesJson from "../src/data/accessories.json";
 import recipesJson from "../src/data/recipes.json";
 import { createInitialGameState } from "../src/core/gameState";
 import type { AccessoryDefinition, RecipeDefinition } from "../src/entities/types";
-import { accessoryAvailability, mixtureAvailability, recipeAvailability } from "../src/systems/availability";
+import {
+  accessoryAvailability,
+  cleaningAvailability,
+  mixtureAvailability,
+  recipeAvailability,
+} from "../src/systems/availability";
 import { hasAffordableHousePart, shouldAutoSleepAtHome } from "../src/systems/building";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
@@ -51,6 +56,55 @@ describe("action availability", () => {
       missing: [{ itemId: "leaf_enzyme", amount: 2 }],
     });
   });
+
+  it("preflights cleaning blockers before the interaction starts", () => {
+    const state = createInitialGameState();
+    state.currentActivity = 0;
+    expect(cleaningAvailability(state, "pipe-entrance", "entrance-01")).toMatchObject({
+      enabled: false,
+      blocker: "no_activity",
+      remedy: "rest",
+    });
+
+    state.currentActivity = 5;
+    const target = state.zoneCleaningState["pipe-entrance"]?.targets["entrance-01"];
+    if (!target) throw new Error("cleaning target fixture missing");
+    target.surfaceCleaned = true;
+    target.deepestLayer = 1;
+    expect(cleaningAvailability(state, "pipe-entrance", "entrance-01")).toMatchObject({
+      enabled: false,
+      blocker: "cleaner_level",
+      requiredCleanerLevel: 2,
+      remedy: "workshop",
+    });
+  });
+
+  it("offers challenges only for the first surface and first rare layer of each dirt type", () => {
+    const state = createInitialGameState();
+    expect(cleaningAvailability(state, "pipe-entrance", "entrance-01")).toMatchObject({
+      enabled: true,
+      challenge: "surface_first",
+    });
+
+    const firstLeaf = state.zoneCleaningState["pipe-entrance"]?.targets["entrance-01"];
+    if (!firstLeaf) throw new Error("leaf fixture missing");
+    firstLeaf.surfaceCleaned = true;
+    firstLeaf.deepestLayer = 1;
+    expect(cleaningAvailability(state, "pipe-entrance", "entrance-03")).toMatchObject({
+      enabled: true,
+      challenge: undefined,
+    });
+
+    state.cleanerLevel = 3;
+    firstLeaf.deepestLayer = 3;
+    state.equippedAccessories = ["narrow_nozzle"];
+    state.preparedSolutions.resin_release_solution = 1;
+    expect(cleaningAvailability(state, "pipe-entrance", "entrance-01", "resin_release_solution")).toMatchObject({
+      enabled: true,
+      layer: 4,
+      challenge: "rare_layer_first",
+    });
+  });
 });
 
 describe("home auto-sleep eligibility", () => {
@@ -66,7 +120,7 @@ describe("home auto-sleep eligibility", () => {
     expect(hasAffordableHousePart(state)).toBe(true);
     expect(shouldAutoSleepAtHome(state)).toBe(false);
 
-    state.houseSlots["bed-1"] = "leaf_bed";
+    state.homeAnchors["rest-nook"] = "leaf_bed";
     expect(hasAffordableHousePart(state)).toBe(false);
     expect(shouldAutoSleepAtHome(state)).toBe(true);
   });

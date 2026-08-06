@@ -30,7 +30,7 @@ describe("browser save repository", () => {
     repository.save(state);
 
     expect(repository.load()).toMatchObject({
-      saveVersion: 4,
+      saveVersion: 5,
       day: 4,
       inventory: { leaf: 17 },
     });
@@ -64,7 +64,7 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     const loaded = new BrowserSaveRepository(storage).load();
-    expect(loaded).toMatchObject({ saveVersion: 4, day: 7, dayPhase: "working", inventory: { soil: 12 } });
+    expect(loaded).toMatchObject({ saveVersion: 5, day: 7, dayPhase: "working", inventory: { soil: 12 } });
     expect(loaded?.ownedAccessories).toEqual([]);
     expect(loaded?.preparedSolutions).toEqual({});
   });
@@ -77,7 +77,7 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     expect(new BrowserSaveRepository(storage).load()).toMatchObject({
-      saveVersion: 4,
+      saveVersion: 5,
       currentActivity: 0,
       dayPhase: "evening",
     });
@@ -106,9 +106,66 @@ describe("browser save repository", () => {
 
     const loaded = new BrowserSaveRepository(storage).load();
     expect(loaded).toMatchObject({
-      saveVersion: 4,
+      saveVersion: 5,
       memories: [],
       preferences: { masterVolume: 0.7, reducedMotion: false, simpleCleaning: false },
     });
+  });
+
+  it("migrates the twenty-slot v4 home into nine anchors and refunds overflow", () => {
+    const storage = new FakeStorage();
+    const legacy = {
+      ...createInitialGameState(),
+      saveVersion: 4,
+      inventory: {},
+      houseSlots: {
+        "bed-1": "leaf_bed",
+        "wall-1": "shrub_wall",
+        "wall-2": "woven_wall",
+        "wall-3": "shrub_wall",
+        "wall-4": "shrub_wall",
+        "roof-1": "leaf_roof",
+        "roof-2": "leaf_roof",
+        "roof-3": "leaf_roof",
+        "path-1": "dirt_path",
+        "path-2": "dirt_path",
+        "path-3": "dirt_path",
+        "path-4": "dirt_path",
+        "path-5": "dirt_path",
+        "flower-1": "sprout_bed",
+        "flower-2": "sprout_bed",
+        "flower-3": "sprout_bed",
+        "decor-1": "moss_decor",
+        "decor-2": "moss_decor",
+        "decor-3": "moss_decor",
+        "decor-4": "moss_decor",
+      },
+      homeCompletionCelebrated: true,
+    } as Record<string, unknown>;
+    delete legacy.homeAnchors;
+    storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacy));
+
+    const loaded = new BrowserSaveRepository(storage).load();
+
+    expect(loaded).toMatchObject({
+      saveVersion: 5,
+      homeAnchors: {
+        "rest-nook": "leaf_bed",
+        "shell-left": "woven_wall",
+        "shell-back": "shrub_wall",
+        "shell-right": "shrub_wall",
+        "canopy-top": "leaf_roof",
+        threshold: "dirt_path",
+        "garden-pocket": "sprout_bed",
+        "charm-left": "moss_decor",
+        "charm-right": "moss_decor",
+      },
+      inventory: { leaf: 12, grass: 22, soil: 22, seed: 2, moss: 2 },
+      happiness: 45,
+      homeCompletionCelebrated: true,
+    });
+    const persisted = JSON.parse(storage.getItem(BrowserSaveRepository.SAVE_KEY) ?? "{}") as Record<string, unknown>;
+    expect(persisted.saveVersion).toBe(5);
+    expect(persisted.houseSlots).toBeUndefined();
   });
 });

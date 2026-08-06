@@ -8,6 +8,7 @@ import type { GameEvent } from "../../core/events";
 import { getGameEngine } from "../../core/gameContext";
 import type { DirtDefinition, DirtTargetDefinition, ItemDefinition, RecipeDefinition, ZoneDefinition } from "../../entities/types";
 import { nextDirtLayer } from "../../systems/cleaning";
+import { cleaningAvailability, type CleaningAvailability } from "../../systems/availability";
 import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guidance";
 import { precisionCleaningRate, surfaceCleaningRate } from "../../systems/progression";
 import { addButton, addQuokka, addTitle, setQuokkaPose, showToast } from "../../ui/components";
@@ -65,6 +66,7 @@ export class WorkplaceScene extends Phaser.Scene {
   private intent?: ReturnType<typeof commands.cleanDirt>;
   private isTransitioning = false;
   private demoCleaning = false;
+  private blockerAction?: Phaser.GameObjects.Container;
   private readonly targetViews = new Map<string, DirtTargetView>();
 
   public constructor() {
@@ -81,6 +83,7 @@ export class WorkplaceScene extends Phaser.Scene {
     this.pendingTarget = undefined;
     this.isTransitioning = false;
     this.targetViews.clear();
+    this.blockerAction = undefined;
     this.selectedSolutionId = data.solutionId && (state.preparedSolutions[data.solutionId] ?? 0) > 0
       ? data.solutionId
       : undefined;
@@ -208,7 +211,7 @@ export class WorkplaceScene extends Phaser.Scene {
         ? `${selectedRecipe?.name ?? "세정액"} · ${selectedAmount}`
         : availableCount > 0 ? `세정액 고르기 · ${availableCount}종` : "세정액 만들기 →",
       () => this.openSolutionMenu(),
-      { fill: availableCount > 0 || this.selectedSolutionId ? 0x40565a : palette.warmDark, fontSize: 11 },
+      { fill: availableCount > 0 || this.selectedSolutionId ? 0x40565a : palette.warmDark, fontSize: 12 },
     );
     addButton(this, 920, 43, 160, 50, "← 집으로", () => {
       this.scene.start("HomeScene");
@@ -247,7 +250,7 @@ export class WorkplaceScene extends Phaser.Scene {
           .setDepth(8);
         const paw = this.add.text(target.x, target.y - 58, "·  냄새를 기억한 곳  ·", {
           color: "#f4df9b",
-          fontSize: "10px",
+          fontSize: "12px",
           fontStyle: "bold",
           fontFamily: '"Malgun Gothic", sans-serif',
         }).setOrigin(0.5).setDepth(12);
@@ -275,7 +278,7 @@ export class WorkplaceScene extends Phaser.Scene {
       const labelText = fullyCleaned ? "완전 청소" : cleaned ? `${nextLayer?.name ?? "깊은 층"}` : `${dirt.name}${rewardName ? ` · ${rewardName}` : ""}`;
       const label = this.add.text(0, 35, labelText, {
         color: cleaned ? "#b8d9ce" : "#f3e8d1",
-        fontSize: "10px",
+        fontSize: "12px",
         fontStyle: "bold",
         fontFamily: '"Malgun Gothic", sans-serif',
         align: "center",
@@ -288,6 +291,16 @@ export class WorkplaceScene extends Phaser.Scene {
         container.setInteractive({ useHandCursor: true });
         container.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
           event.stopPropagation();
+          const currentAvailability = cleaningAvailability(
+            getGameEngine().snapshot(),
+            this.zoneId,
+            target.id,
+            this.selectedSolutionId,
+          );
+          if (!currentAvailability.enabled) {
+            this.showCleaningBlocker(currentAvailability);
+            return;
+          }
           this.pendingTarget = target;
           this.destination = new Phaser.Math.Vector2(target.x, Math.min(505, target.y + 58));
           showToast(this, cleaned && nextLayer ? nextLayer.hint : `${dirt.name}(으)로 이동합니다.`, "normal", 720);
@@ -324,7 +337,69 @@ export class WorkplaceScene extends Phaser.Scene {
     const target = this.pendingTarget;
     this.pendingTarget = undefined;
     this.destination = undefined;
-    this.openCleaningInteraction(target);
+    const availability = cleaningAvailability(
+      getGameEngine().snapshot(),
+      this.zoneId,
+      target.id,
+      this.selectedSolutionId,
+    );
+    if (!availability.enabled) {
+      this.showCleaningBlocker(availability);
+      return;
+    }
+    if (availability.challenge) {
+      this.openCleaningInteraction(target);
+      return;
+    }
+    this.quickClean(target);
+  }
+
+  private quickClean(target: DirtTargetDefinition): void {
+    const dirt = dirtDefinitions.find((candidate) => candidate.id === target.dirtTypeId);
+    if (!dirt) return;
+    this.isTransitioning = true;
+    setQuokkaPose(this.player, dirt.interaction === "sweep" ? 3 : dirt.interaction === "loosen" ? 4 : 5);
+    this.time.delayedCall(240, () => {
+      setQuokkaPose(this.player, 0);
+      this.commitCleaning(target);
+    });
+  }
+
+  private showCleaningBlocker(availability: CleaningAvailability): void {
+    this.pendingTarget = undefined;
+    this.destination = undefined;
+    showToast(this, availability.message, "normal", 2200);
+    this.blockerAction?.destroy(true);
+
+    let label = "";
+    let action: (() => void) | undefined;
+    if (availability.remedy === "rest") {
+      label = "덤불집에서 쉬기  →";
+      action = () => this.scene.start("HomeScene", { focusId: "rest" });
+    } else if (availability.remedy === "solution") {
+      label = "세정액 고르기  →";
+      action = () => this.openSolutionMenu();
+    } else if (availability.remedy === "workshop") {
+      label = "작업실 수첩 열기  →";
+      action = () => this.scene.start("WorkshopScene", {
+        focusId: availability.requiredAccessoryId ?? availability.requiredSolutionId ?? "cleaner-upgrade",
+        returnZoneId: this.zoneId,
+        returnPlayerX: this.player?.x ?? this.startPlayerX,
+        returnPlayerY: this.player?.y ?? this.startPlayerY,
+        returnSolutionId: this.selectedSolutionId,
+      });
+    }
+    if (!action) return;
+    const button = addButton(this, 512, 184, 250, 42, label, action, {
+      fill: palette.warmDark,
+      hoverFill: palette.warm,
+      fontSize: 14,
+    }).setDepth(1700);
+    this.blockerAction = button;
+    this.time.delayedCall(4300, () => {
+      if (this.blockerAction === button) this.blockerAction = undefined;
+      button.destroy(true);
+    });
   }
 
   private openCleaningInteraction(target: DirtTargetDefinition): void {
@@ -356,8 +431,8 @@ export class WorkplaceScene extends Phaser.Scene {
     }).setOrigin(0.5);
     const track = this.add.rectangle(512, 397, 430, 18, 0x17282c, 1).setStrokeStyle(2, 0x8ca19b, 0.8);
     const fill = this.add.rectangle(299, 397, 0, 12, 0xf0d27e, 1).setOrigin(0, 0.5);
-    const note = this.add.text(512, 430, "실패는 없어요 · 직접 마치면 대표 재료 +1", {
-      color: "#9fb7b0", fontSize: "11px", fontFamily: '"Malgun Gothic", sans-serif',
+    const note = this.add.text(512, 430, "첫 발견 보너스: 모든 재료 ×2 · 직접 마치면 대표 재료 +1", {
+      color: "#9fb7b0", fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif',
     }).setOrigin(0.5);
     overlay.add([veil, panel, title, instruction, pad, icon, track, fill, note]);
 
@@ -426,11 +501,11 @@ export class WorkplaceScene extends Phaser.Scene {
       close();
       setQuokkaPose(this.player, 0);
       this.isTransitioning = false;
-    }, { fill: palette.inkSoft, fontSize: 11 });
+    }, { fill: palette.inkSoft, fontSize: 12 });
     overlay.add(cancel);
   }
 
-  private commitCleaning(target: DirtTargetDefinition, feedback: CleaningFeedback): void {
+  private commitCleaning(target: DirtTargetDefinition, feedback?: CleaningFeedback): void {
     const events = getGameEngine().dispatch(commands.cleanDirt(this.zoneId, target.id, this.selectedSolutionId, feedback));
     const rejected = events.find((event) => event.type === "RULE_REJECTED");
     if (rejected) {
@@ -451,7 +526,9 @@ export class WorkplaceScene extends Phaser.Scene {
     const unlock = events.find((event) => event.type === "ZONE_UNLOCKED");
     const deep = events.find((event) => event.type === "DEEP_LAYER_CLEANED");
     const reward = events.find((event) => event.type === "MATERIAL_GAINED");
-    const message = unlock?.message ?? deep?.message ?? reward?.message ?? "깨끗해졌습니다!";
+    const cleaned = events.find((event) => event.type === "DIRT_CLEANED" || event.type === "DEEP_LAYER_CLEANED");
+    const bonus = cleaned?.data.rewardMultiplier === 2 ? " · 보너스 재료 ×2!" : "";
+    const message = `${unlock?.message ?? deep?.message ?? reward?.message ?? "깨끗해졌습니다!"}${bonus}`;
     this.isTransitioning = true;
     this.playCleaningAnimation(target, () => {
       this.refreshTargetView(target);

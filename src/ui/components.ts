@@ -2,6 +2,7 @@ import * as Phaser from "phaser";
 import { palette } from "./palette";
 import { getGameEngine } from "../core/gameContext";
 import { playSoundCue } from "./sound";
+import { UI_FONT_FAMILY, typography } from "./typography";
 
 export interface ButtonOptions {
   fill?: number;
@@ -50,13 +51,14 @@ export function addButton(
   const text = scene.add
     .text(options.align === "left" ? -width / 2 + 12 : 0, 0, label, {
       color: options.disabled ? "#738181" : palette.cream,
-      fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
-      fontSize: `${options.fontSize ?? 15}px`,
+      fontFamily: UI_FONT_FAMILY,
+      fontSize: `${Math.max(typography.caption, options.fontSize ?? typography.button)}px`,
       fontStyle: "bold",
       align: options.align ?? "center",
       wordWrap: { width: width - 20 },
     })
-    .setOrigin(options.align === "left" ? 0 : 0.5, 0.5);
+    .setOrigin(options.align === "left" ? 0 : 0.5, 0.5)
+    .setResolution(2);
   const container = scene.add.container(x, y, [highlight, background, text]);
   container.setSize(width, height);
 
@@ -95,10 +97,10 @@ export function addTitle(
 ): Phaser.GameObjects.Text {
   return scene.add.text(x, y, text, {
     color: palette.cream,
-    fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
-    fontSize: `${size}px`,
+    fontFamily: UI_FONT_FAMILY,
+    fontSize: `${Math.max(typography.subtitle, size)}px`,
     fontStyle: "bold",
-  });
+  }).setResolution(2);
 }
 
 export function showToast(
@@ -115,12 +117,13 @@ export function showToast(
   const label = scene.add
     .text(512, 525, message, {
       color: palette.cream,
-      fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
+      fontFamily: UI_FONT_FAMILY,
       fontSize: "16px",
       fontStyle: "bold",
       align: "center",
     })
     .setOrigin(0.5)
+    .setResolution(2)
     .setDepth(1001);
   scene.tweens.add({ targets: [background, label], alpha: 0, delay: duration, duration: 250 });
   scene.time.delayedCall(duration + 300, () => {
