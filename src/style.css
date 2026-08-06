@@ -50,6 +50,10 @@ body {
   text-align: center;
 }
 
+.rotate-card {
+  display: none;
+}
+
 @media (max-width: 720px) {
   #app {
     padding: 4px;
@@ -65,3 +69,41 @@ body {
   }
 }
 
+@media (max-width: 720px) and (orientation: portrait) {
+  #game,
+  .controls {
+    display: none;
+  }
+
+  .rotate-card {
+    display: grid;
+    width: min(86vw, 360px);
+    min-height: 260px;
+    place-items: center;
+    align-content: center;
+    gap: 14px;
+    padding: 32px;
+    border: 2px solid #b99a68;
+    border-radius: 24px;
+    background: linear-gradient(160deg, #3c4e42, #263832 62%, #5d4633);
+    box-shadow: 0 20px 70px rgb(0 0 0 / 45%);
+    color: #f8edcf;
+    text-align: center;
+  }
+
+  .rotate-card span {
+    color: #e8c87e;
+    font-size: 64px;
+    line-height: 1;
+  }
+
+  .rotate-card strong {
+    font-size: 20px;
+  }
+
+  .rotate-card p {
+    margin: 0;
+    color: #c8d9d0;
+    font-size: 14px;
+  }
+}

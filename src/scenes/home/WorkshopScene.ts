@@ -6,10 +6,17 @@ import { commands, type GameCommand } from "../../core/commands";
 import type { GameEvent } from "../../core/events";
 import { getGameEngine } from "../../core/gameContext";
 import type { AccessoryDefinition, ItemDefinition, LiquidId, RecipeDefinition } from "../../entities/types";
+import {
+  accessoryAvailability,
+  mixtureAvailability,
+  recipeAvailability,
+  type ActionAvailability,
+} from "../../systems/availability";
 import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guidance";
-import { addButton, addPanel, addTitle, showToast } from "../../ui/components";
+import { addButton, addPanel, addQuokka, addTitle, setQuokkaPose, showToast } from "../../ui/components";
 import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
+import { bindAmbient } from "../../ui/sound";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const items = itemsJson as unknown as ItemDefinition[];
@@ -22,18 +29,34 @@ const liquidNames: Record<LiquidId, string> = {
   clay_binder: "점토 결합",
 };
 
+interface WorkshopSceneData {
+  ingredients?: LiquidId[];
+  message?: string;
+  focusId?: string;
+  recentEventType?: GameEvent["type"];
+  intent?: GameCommand;
+  returnZoneId?: string;
+  returnPlayerX?: number;
+  returnPlayerY?: number;
+  returnSolutionId?: string;
+}
+
 export class WorkshopScene extends Phaser.Scene {
   private ingredients: [LiquidId, LiquidId, LiquidId] = ["water", "water", "water"];
   private startupMessage?: string;
   private focusId?: string;
   private recentEventType?: GameEvent["type"];
   private intent?: GameCommand;
+  private returnZoneId?: string;
+  private returnPlayerX?: number;
+  private returnPlayerY?: number;
+  private returnSolutionId?: string;
 
   public constructor() {
     super("WorkshopScene");
   }
 
-  public init(data: { ingredients?: LiquidId[]; message?: string; focusId?: string; recentEventType?: GameEvent["type"]; intent?: GameCommand } = {}): void {
+  public init(data: WorkshopSceneData = {}): void {
     if (data.ingredients?.length === 3) {
       this.ingredients = [...data.ingredients] as [LiquidId, LiquidId, LiquidId];
     }
@@ -41,22 +64,42 @@ export class WorkshopScene extends Phaser.Scene {
     this.focusId = data.focusId;
     this.recentEventType = data.recentEventType;
     this.intent = data.intent;
+    this.returnZoneId = data.returnZoneId;
+    this.returnPlayerX = data.returnPlayerX;
+    this.returnPlayerY = data.returnPlayerY;
+    this.returnSolutionId = data.returnSolutionId;
   }
 
   public create(): void {
     this.cameras.main.setBackgroundColor("#263638");
-    this.add.rectangle(512, 42, 1024, 84, palette.ink);
+    this.add.image(512, 288, "home-diorama").setDisplaySize(1024, 576).setTint(0x8ca37b);
+    this.add.rectangle(512, 330, 1024, 492, 0x142328, 0.52);
+    this.add.rectangle(512, 42, 1024, 84, palette.ink, 0.94);
     addTitle(this, 24, 15, "쿼카의 장비 작업실", 24);
     const state = getGameEngine().getState();
     this.add.text(25, 51, `${state.day}일 차 · 활동력 ${state.currentActivity}/${state.maxActivity}`, {
       color: "#c6ded7", fontSize: "14px", fontFamily: '"Malgun Gothic", sans-serif',
     });
-    addButton(this, 910, 42, 174, 48, "← 집으로", () => this.scene.start("HomeScene"), {
+    addButton(this, 910, 42, 174, 48, this.returnZoneId ? "← 배관으로" : "← 집으로", () => {
+      if (this.returnZoneId) {
+        this.scene.start("WorkplaceScene", {
+          zoneId: this.returnZoneId,
+          playerX: this.returnPlayerX,
+          playerY: this.returnPlayerY,
+          solutionId: this.returnSolutionId,
+        });
+      } else {
+        this.scene.start("HomeScene");
+      }
+    }, {
       fill: palette.warmDark, fontSize: 14,
     });
     this.drawInventory();
     this.drawMixer();
     this.drawEquipment();
+    const quokka = addQuokka(this, 695, 510).setScale(0.62).setDepth(70);
+    setQuokkaPose(quokka, 7);
+    bindAmbient(this, "home", state.preferences.masterVolume);
     const guidance = getQuokkaGuidance(getGameEngine().snapshot(), {
       scene: "workshop",
       recentEventType: this.recentEventType,
@@ -64,6 +107,7 @@ export class WorkshopScene extends Phaser.Scene {
     });
     addQuokkaGuide(this, guidance, {
       sceneName: "workshop",
+      actor: quokka,
       onFollow: (destination) => this.followGuidance(destination),
     });
     if (this.startupMessage) showToast(this, this.startupMessage, "success", 1100);
@@ -71,7 +115,7 @@ export class WorkshopScene extends Phaser.Scene {
 
   private drawInventory(): void {
     const state = getGameEngine().getState();
-    addPanel(this, 18, 96, 202, 462, palette.panelWarm);
+    addPanel(this, 18, 96, 202, 462, palette.panelWarm, 0.9);
     addTitle(this, 32, 112, "재료 가방", 18);
     items.forEach((item, index) => {
       const y = 151 + index * 28;
@@ -90,17 +134,20 @@ export class WorkshopScene extends Phaser.Scene {
     const liquidRecipes = recipes.filter((recipe) => recipe.kind === "liquid");
     liquidRecipes.forEach((recipe, index) => {
       const liquidId = recipe.outputId as LiquidId;
+      const availability = recipeAvailability(state, recipe);
       addButton(this, 119, 470 + index * 31, 170, 27,
-        `${liquidNames[liquidId]} +3 · 보유 ${state.preparedLiquids[liquidId]}`,
+        availability.enabled
+          ? `${liquidNames[liquidId]} +3 · 보유 ${state.preparedLiquids[liquidId]}`
+          : `${liquidNames[liquidId]} · ${this.availabilityLabel(availability)}`,
         () => this.runCommand(commands.craftRecipe(recipe.id)),
-        { fill: 0x40565a, fontSize: 10, highlighted: this.focusId === recipe.id },
+        { disabled: !availability.enabled, fill: 0x40565a, fontSize: 10, highlighted: this.focusId === recipe.id },
       );
     });
   }
 
   private drawMixer(): void {
     const state = getGameEngine().getState();
-    addPanel(this, 230, 96, 480, 462, 0x334447);
+    addPanel(this, 230, 96, 480, 462, 0x334447, 0.91);
     addTitle(this, 246, 112, "세 방울 조합대", 18);
     this.add.text(246, 142, "순서는 결과에 영향을 주지 않습니다. 물은 무료입니다.", {
       color: "#b8cbc6", fontSize: "11px", fontFamily: '"Malgun Gothic", sans-serif',
@@ -110,12 +157,21 @@ export class WorkshopScene extends Phaser.Scene {
       addButton(this, 309 + index * 158, 193, 140, 54, `${index + 1}번 · ${liquidNames[ingredient]}\n보유 ${amount}`, () => {
         const current = liquidIds.indexOf(ingredient);
         this.ingredients[index] = liquidIds[(current + 1) % liquidIds.length] ?? "water";
-        this.scene.restart({ ingredients: this.ingredients });
+        this.scene.restart(this.restartData({ ingredients: this.ingredients }));
       }, { fill: 0x496166, fontSize: 12 });
     });
-    addButton(this, 470, 257, 260, 48, "이 조합 시험하기 · 활동력 1", () => {
+    const mixAvailability = mixtureAvailability(state, this.ingredients);
+    addButton(this, 470, 257, 260, 48, mixAvailability.enabled
+      ? "이 조합 시험하기 · 활동력 1"
+      : `조합할 수 없음 · ${this.availabilityLabel(mixAvailability)}`, () => {
       this.runCommand(commands.mixLiquids([...this.ingredients]));
-    }, { fill: palette.clean, hoverFill: palette.grass, fontSize: 14, highlighted: this.focusId === "mixer" });
+    }, {
+      disabled: !mixAvailability.enabled,
+      fill: palette.clean,
+      hoverFill: palette.grass,
+      fontSize: 14,
+      highlighted: this.focusId === "mixer",
+    });
 
     this.add.text(246, 296, `레시피 수첩 · 발견 ${state.discoveredRecipes.length}/5`, {
       color: "#f1d99e", fontSize: "14px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
@@ -144,28 +200,37 @@ export class WorkshopScene extends Phaser.Scene {
 
   private drawEquipment(): void {
     const state = getGameEngine().getState();
-    addPanel(this, 720, 96, 286, 462, palette.panel);
+    addPanel(this, 720, 96, 286, 462, palette.panel, 0.91);
     addTitle(this, 736, 112, `청소기 ${state.cleanerLevel}단계`, 18);
     const nextUpgrade = recipes.find(
       (recipe) => recipe.kind === "cleaner_upgrade" && recipe.cleanerLevel === state.cleanerLevel + 1,
     );
-    addButton(this, 863, 171, 246, 50, nextUpgrade ? `${nextUpgrade.name}\n${this.costLabel(nextUpgrade.costs ?? [])}` : "최고 단계 달성", () => {
+    const upgradeAvailability = nextUpgrade ? recipeAvailability(state, nextUpgrade) : undefined;
+    addButton(this, 863, 171, 246, 50, nextUpgrade
+      ? `${nextUpgrade.name}\n${upgradeAvailability?.enabled ? this.costLabel(nextUpgrade.costs ?? []) : this.availabilityLabel(upgradeAvailability!)}`
+      : "최고 단계 달성", () => {
       if (nextUpgrade) this.runCommand(commands.craftRecipe(nextUpgrade.id));
-    }, { disabled: !nextUpgrade, fill: palette.clean, fontSize: 12, highlighted: this.focusId === nextUpgrade?.id });
+    }, {
+      disabled: !nextUpgrade || !upgradeAvailability?.enabled,
+      fill: palette.clean,
+      fontSize: 12,
+      highlighted: Boolean(nextUpgrade && this.focusId === nextUpgrade.id),
+    });
     this.add.text(736, 211, "액세서리 · 한 번에 하나 장착", {
       color: "#b8cbc6", fontSize: "12px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     });
     accessories.forEach((accessory, index) => {
       const owned = state.ownedAccessories.includes(accessory.id);
       const equipped = state.equippedAccessories.includes(accessory.id);
+      const availability = accessoryAvailability(state, accessory);
       const label = owned
-        ? `${accessory.name}${equipped ? " · 장착 중" : " · 장착"}\n${accessory.description}`
-        : `${accessory.name} 제작\n${this.costLabel(accessory.cost)}`;
+        ? `${accessory.name}${equipped ? " · 장착 중" : " · 장착"}\n${equipped ? this.availabilityLabel(availability) : accessory.description}`
+        : `${accessory.name} 제작\n${availability.enabled ? this.costLabel(accessory.cost) : this.availabilityLabel(availability, accessory.requiredCleanerLevel)}`;
       addButton(this, 863, 262 + index * 88, 246, 72, label, () => {
         this.runCommand(owned ? commands.equipAccessory(accessory.id) : commands.craftAccessory(accessory.id));
       }, {
         fill: equipped ? palette.grass : Phaser.Display.Color.HexStringToColor(accessory.color).color,
-        disabled: !owned && state.cleanerLevel < accessory.requiredCleanerLevel,
+        disabled: !availability.enabled,
         fontSize: 11,
         highlighted: this.focusId === accessory.id,
       });
@@ -179,21 +244,24 @@ export class WorkshopScene extends Phaser.Scene {
     const events = getGameEngine().dispatch(command);
     const rejected = events.find((event) => event.type === "RULE_REJECTED");
     if (rejected) {
-      showToast(this, "흠… 빠진 준비가 있어. 내 수첩으로 냄새를 다시 이어 볼게.", "normal", 900);
+      showToast(this, rejected.message, "error", 1200);
       this.time.delayedCall(520, () => this.scene.restart({
-        ingredients: this.ingredients,
+        ...this.restartData(),
         recentEventType: "RULE_REJECTED",
         intent: command,
       }));
       return;
     }
-    if (events.some((event) => event.type === "GAME_COMPLETED")) {
-      this.scene.start("ResultScene");
+    if (events.some((event) => event.type === "WORK_ENDED")) {
+      this.scene.start("HomeScene", { recentEventType: "WORK_ENDED", returning: true });
       return;
     }
-    const notable = events.find((event) => ["RECIPE_DISCOVERED", "MIXTURE_ATTEMPTED", "ACCESSORY_CRAFTED", "ACCESSORY_EQUIPPED", "ITEM_CRAFTED", "DAY_ENDED"].includes(event.type));
+    const notable = events.find((event) => ["RECIPE_DISCOVERED", "MIXTURE_ATTEMPTED", "ACCESSORY_CRAFTED", "ACCESSORY_EQUIPPED", "ITEM_CRAFTED"].includes(event.type));
+    if (notable?.type === "MIXTURE_ATTEMPTED" && notable.data.success === true && typeof notable.data.recipeId === "string") {
+      this.returnSolutionId = recipes.find((recipe) => recipe.id === notable.data.recipeId)?.outputId;
+    }
     this.scene.restart({
-      ingredients: this.ingredients,
+      ...this.restartData(),
       message: notable?.message ?? "완료했습니다.",
       recentEventType: notable?.type,
     });
@@ -202,14 +270,14 @@ export class WorkshopScene extends Phaser.Scene {
   private followGuidance(destination: GuidanceDestination): void {
     if (destination.scene === "workshop") {
       this.scene.restart({
-        ingredients: destination.ingredients ?? this.ingredients,
+        ...this.restartData({ ingredients: destination.ingredients ?? this.ingredients }),
         focusId: destination.focusId,
       });
     } else if (destination.scene === "home") {
       this.scene.start("HomeScene", { focusId: destination.focusId });
     } else {
-      this.scene.start("WorkplaceScene", {
-        zoneId: destination.zoneId,
+      this.scene.start("PipeMapScene", {
+        focusZoneId: destination.zoneId,
         focusId: destination.focusId,
       });
     }
@@ -217,5 +285,27 @@ export class WorkshopScene extends Phaser.Scene {
 
   private costLabel(costs: Array<{ itemId: string; amount: number }>): string {
     return costs.map((cost) => `${items.find((item) => item.id === cost.itemId)?.name ?? cost.itemId} ${cost.amount}`).join(" · ");
+  }
+
+  private availabilityLabel(availability: ActionAvailability, cleanerLevel?: number): string {
+    if (availability.blocker === "no_activity") return "활동력 0 · 잠든 뒤 가능";
+    if (availability.blocker === "cleaner_level") return `청소기 ${cleanerLevel ?? "다음"}단계 필요`;
+    if (availability.blocker === "already_equipped") return "이미 장착 중";
+    if (availability.blocker === "liquids") {
+      return `부족 · ${availability.missing.map((cost) => `${liquidNames[cost.itemId as LiquidId] ?? cost.itemId} ${cost.amount}`).join(" · ")}`;
+    }
+    if (availability.blocker === "materials") return `부족 · ${this.costLabel(availability.missing)}`;
+    return "가능";
+  }
+
+  private restartData(overrides: WorkshopSceneData = {}): WorkshopSceneData {
+    return {
+      ingredients: this.ingredients,
+      returnZoneId: this.returnZoneId,
+      returnPlayerX: this.returnPlayerX,
+      returnPlayerY: this.returnPlayerY,
+      returnSolutionId: this.returnSolutionId,
+      ...overrides,
+    };
   }
 }

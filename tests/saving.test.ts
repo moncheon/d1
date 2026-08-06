@@ -30,7 +30,7 @@ describe("browser save repository", () => {
     repository.save(state);
 
     expect(repository.load()).toMatchObject({
-      saveVersion: 2,
+      saveVersion: 4,
       day: 4,
       inventory: { leaf: 17 },
     });
@@ -64,9 +64,23 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     const loaded = new BrowserSaveRepository(storage).load();
-    expect(loaded).toMatchObject({ saveVersion: 2, day: 7, inventory: { soil: 12 } });
+    expect(loaded).toMatchObject({ saveVersion: 4, day: 7, dayPhase: "working", inventory: { soil: 12 } });
     expect(loaded?.ownedAccessories).toEqual([]);
     expect(loaded?.preparedSolutions).toEqual({});
+  });
+
+  it("migrates an exhausted version two save into the evening before sleep", () => {
+    const storage = new FakeStorage();
+    const legacy = { ...createInitialGameState(), saveVersion: 2, currentActivity: 0 };
+    const legacyShape = { ...legacy } as Record<string, unknown>;
+    delete legacyShape.dayPhase;
+    storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
+
+    expect(new BrowserSaveRepository(storage).load()).toMatchObject({
+      saveVersion: 4,
+      currentActivity: 0,
+      dayPhase: "evening",
+    });
   });
 
   it("merges newly introduced data targets into an older valid save", () => {
@@ -78,5 +92,23 @@ describe("browser save repository", () => {
 
     const loaded = new BrowserSaveRepository(storage).load();
     expect(loaded?.zoneCleaningState["pipe-entrance"]?.targets["entrance-01"]).toBeDefined();
+  });
+
+  it("migrates version three saves with memories and comfort settings", () => {
+    const storage = new FakeStorage();
+    const legacy = createInitialGameState();
+    legacy.saveVersion = 3;
+    const legacyShape = { ...legacy } as Record<string, unknown>;
+    delete legacyShape.memories;
+    delete legacyShape.cleaningStats;
+    delete legacyShape.preferences;
+    storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
+
+    const loaded = new BrowserSaveRepository(storage).load();
+    expect(loaded).toMatchObject({
+      saveVersion: 4,
+      memories: [],
+      preferences: { masterVolume: 0.7, reducedMotion: false, simpleCleaning: false },
+    });
   });
 });

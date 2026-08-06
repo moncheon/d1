@@ -35,6 +35,7 @@ describe("Quokka guidance", () => {
       focusId: "entrance-01",
     });
     expect(guidance.thought).not.toContain("퀘스트");
+    expect(guidance.suggestions).toHaveLength(1);
   });
 
   it("shows exact shortage and an obtainable source", () => {
@@ -53,6 +54,7 @@ describe("Quokka guidance", () => {
     });
     expect(guidance.needs[0]?.sources.some((source) => source.includes("젖은 낙엽 더미 표면"))).toBe(true);
     expect(guidance.destination.scene).toBe("workplace");
+    expect(guidance.suggestions).toHaveLength(2);
   });
 
   it("remembers the remaining surface count for opening a path", () => {
@@ -110,6 +112,31 @@ describe("Quokka guidance", () => {
     const guidance = getQuokkaGuidance(state, { scene: "home" });
 
     expect(guidance.memory).toContain("낙엽 침대");
+  });
+
+  it("remembers an affordable house part before sleep instead of sending the player back to work", () => {
+    const state = createInitialGameState();
+    state.dayPhase = "evening";
+    state.currentActivity = 0;
+    state.inventory = { leaf: 4, grass: 2 };
+
+    const guidance = getQuokkaGuidance(state, { scene: "home", recentEventType: "WORK_ENDED" });
+
+    expect(guidance.id).toBe("evening-build-bed-1");
+    expect(guidance.destination).toMatchObject({ scene: "home", focusId: "bed-1" });
+    expect(guidance.thought).toContain("낙엽 침대");
+    expect(guidance.suggestions).toHaveLength(1);
+  });
+
+  it("settles down to rest when an evening bag cannot build anything", () => {
+    const state = createInitialGameState();
+    state.dayPhase = "evening";
+    state.currentActivity = 0;
+
+    const guidance = getQuokkaGuidance(state, { scene: "home", recentEventType: "WORK_ENDED" });
+
+    expect(guidance.id).toBe("evening-rest");
+    expect(guidance.destination).toMatchObject({ scene: "home", focusId: "rest" });
   });
 
   it("turns a failed building attempt into exact material guidance", () => {

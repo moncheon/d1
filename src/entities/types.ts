@@ -4,6 +4,8 @@ export type DirtTypeId = string;
 export type ZoneId = string;
 export type HouseSlotId = string;
 export type LiquidId = "water" | "leaf_enzyme" | "grass_ferment" | "clay_binder";
+export type CleanTechnique = "sweep" | "loosen" | "soak";
+export type CleanQuality = "standard" | "careful";
 
 export interface ItemDefinition {
   id: ItemId;
@@ -27,6 +29,7 @@ export interface DirtDefinition {
   id: DirtTypeId;
   name: string;
   color: string;
+  interaction: CleanTechnique;
   rewards: RewardRange[];
   layers: DirtLayerDefinition[];
 }
@@ -51,12 +54,15 @@ export interface BuildingDefinition {
   happiness: number;
   cost: Cost[];
   color: string;
+  description: string;
+  spriteKey: string;
+  routineKey: string;
 }
 
 export interface HouseSlotDefinition {
   id: HouseSlotId;
   category: BuildingCategory;
-  defaultBuildingId: BuildingId;
+  buildingOptions: BuildingId[];
   x: number;
   y: number;
 }
@@ -72,9 +78,23 @@ export interface ZoneDefinition {
   id: ZoneId;
   name: string;
   unlockSurfaceRate: number;
-  nextZoneId?: ZoneId;
+  nextZoneIds?: ZoneId[];
+  completionTargetId: string;
   accent: string;
+  theme: "entrance" | "organic" | "mineral";
+  landmark: string;
   targets: DirtTargetDefinition[];
+}
+
+export type PipeShape = "straight" | "corner" | "tee" | "cap";
+
+export interface PipeCellDefinition {
+  id: string;
+  column: number;
+  row: number;
+  shape: PipeShape;
+  rotation: 0 | 90 | 180 | 270;
+  zoneId?: ZoneId;
 }
 
 export interface RecipeDefinition {

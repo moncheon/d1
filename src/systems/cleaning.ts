@@ -5,6 +5,7 @@ import { GameRuleError } from "../core/errors";
 import { gameEvent, type GameEvent } from "../core/events";
 import type { DirtDefinition, DirtLayerDefinition, ZoneDefinition } from "../entities/types";
 import { addItem } from "./inventory";
+import type { CleaningFeedback } from "../core/commands";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
@@ -54,6 +55,7 @@ export function cleanDirt(
   zoneId: string,
   targetId: string,
   solutionId?: string,
+  feedback?: CleaningFeedback,
 ): GameEvent[] {
   if (state.currentActivity <= 0) {
     throw new GameRuleError("NO_ACTIVITY", "활동력이 없습니다. 집에서 쉬어야 합니다.");
@@ -78,19 +80,31 @@ export function cleanDirt(
   }
 
   if (targetState.surfaceCleaned) {
-    return cleanDeepLayer(state, zoneId, targetId, dirt, solutionId);
+    return cleanDeepLayer(state, zoneId, targetId, dirt, solutionId, feedback);
   }
 
   targetState.surfaceCleaned = true;
   targetState.deepestLayer = 1;
   state.currentActivity -= 1;
   const gained = rewardLayer(state, target.id, 1, dirt.rewards);
+  const validFeedback = feedback?.technique === dirt.interaction ? feedback : undefined;
+  const carefulBonus = validFeedback?.quality === "careful" ? dirt.rewards[0] : undefined;
+  if (carefulBonus) {
+    addItem(state, carefulBonus.itemId, 1);
+    gained[carefulBonus.itemId] = (gained[carefulBonus.itemId] ?? 0) + 1;
+  }
+  recordCleaning(state, dirt, validFeedback);
 
   const events: GameEvent[] = [
     gameEvent("DIRT_CLEANED", `${dirt.name}의 표면을 깨끗하게 만들었습니다.`, {
       zoneId,
       targetId,
       dirtTypeId: dirt.id,
+      technique: dirt.interaction,
+      quality: validFeedback?.quality ?? "standard",
+      durationMs: validFeedback?.durationMs ?? 0,
+      assisted: validFeedback?.assisted ?? false,
+      bonusGained: carefulBonus ? { [carefulBonus.itemId]: 1 } : {},
     }),
     gameEvent("MATERIAL_GAINED", "청소한 곳에서 재료를 얻었습니다.", { gained }),
     gameEvent("ACTIVITY_CHANGED", `활동력 ${state.currentActivity} 남음`, {
@@ -108,6 +122,7 @@ function cleanDeepLayer(
   targetId: string,
   dirt: DirtDefinition,
   solutionId?: string,
+  feedback?: CleaningFeedback,
 ): GameEvent[] {
   const targetState = state.zoneCleaningState[zoneId]?.targets[targetId];
   if (!targetState) {
@@ -139,6 +154,8 @@ function cleanDeepLayer(
   targetState.deepestLayer = layer.level;
   state.currentActivity -= 1;
   const gained = rewardLayer(state, targetId, layer.level, layer.rewards);
+  const validFeedback = feedback?.technique === dirt.interaction ? feedback : undefined;
+  recordCleaning(state, dirt, validFeedback);
   return [
     gameEvent("DEEP_LAYER_CLEANED", `${dirt.name}의 ${layer.name}을(를) 제거했습니다.`, {
       zoneId,
@@ -147,6 +164,10 @@ function cleanDeepLayer(
       layer: layer.level,
       solutionId: layer.requiredSolutionId ?? null,
       accessoryId: layer.requiredAccessoryId ?? null,
+      technique: dirt.interaction,
+      quality: validFeedback?.quality ?? "standard",
+      durationMs: validFeedback?.durationMs ?? 0,
+      assisted: validFeedback?.assisted ?? false,
     }),
     gameEvent("MATERIAL_GAINED", "깊은 층에서 새로운 재료를 얻었습니다.", { gained }),
     gameEvent("ACTIVITY_CHANGED", `활동력 ${state.currentActivity} 남음`, {
@@ -154,6 +175,17 @@ function cleanDeepLayer(
       maxActivity: state.maxActivity,
     }),
   ];
+}
+
+function recordCleaning(
+  state: GameState,
+  dirt: DirtDefinition,
+  feedback?: CleaningFeedback,
+): void {
+  const stat = state.cleaningStats[dirt.interaction];
+  stat.completed += 1;
+  if (feedback?.quality === "careful") stat.careful += 1;
+  if (feedback?.assisted) stat.assisted += 1;
 }
 
 export function harvestDailyPile(state: GameState): GameEvent[] {

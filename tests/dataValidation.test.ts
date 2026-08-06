@@ -13,6 +13,7 @@ import type {
   HouseSlotDefinition,
   ItemDefinition,
   RecipeDefinition,
+  PipeCellDefinition,
   ZoneDefinition,
 } from "../src/entities/types";
 
@@ -21,7 +22,7 @@ const dirt = dirtJson as unknown as DirtDefinition[];
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const recipes = recipesJson as unknown as RecipeDefinition[];
-const maps = mapsJson as unknown as { homeSlots: HouseSlotDefinition[]; zones: ZoneDefinition[] };
+const maps = mapsJson as unknown as { pipeNetwork: PipeCellDefinition[]; homeSlots: HouseSlotDefinition[]; zones: ZoneDefinition[] };
 
 function duplicateIds(values: Array<{ id: string }>): string[] {
   const seen = new Set<string>();
@@ -43,6 +44,7 @@ describe("content data integrity", () => {
     expect(duplicateIds(maps.homeSlots)).toEqual([]);
     expect(duplicateIds(maps.zones)).toEqual([]);
     expect(duplicateIds(maps.zones.flatMap((zone) => zone.targets))).toEqual([]);
+    expect(duplicateIds(maps.pipeNetwork)).toEqual([]);
   });
 
   it("only references existing items from rewards and costs", () => {
@@ -84,13 +86,20 @@ describe("content data integrity", () => {
 
     for (const zone of maps.zones) {
       expect(zone.targets.every((target) => dirtIds.has(target.dirtTypeId))).toBe(true);
-      if (zone.nextZoneId) expect(zoneIds.has(zone.nextZoneId)).toBe(true);
+      expect(zone.nextZoneIds?.every((nextZoneId) => zoneIds.has(nextZoneId)) ?? true).toBe(true);
       expect(zone.unlockSurfaceRate).toBeGreaterThan(0);
       expect(zone.unlockSurfaceRate).toBeLessThanOrEqual(1);
+      expect(zone.targets.some((target) => target.id === zone.completionTargetId)).toBe(true);
     }
+    expect(maps.pipeNetwork.filter((cell) => cell.zoneId).every((cell) => zoneIds.has(cell.zoneId!))).toBe(true);
     for (const slot of maps.homeSlots) {
-      expect(buildingById.get(slot.defaultBuildingId)?.category).toBe(slot.category);
+      expect(slot.buildingOptions).toHaveLength(2);
+      expect(slot.buildingOptions.every((buildingId) => buildingById.get(buildingId)?.category === slot.category)).toBe(true);
     }
+  });
+
+  it("gives every dirt type a distinct friendly cleaning interaction", () => {
+    expect(new Set(dirt.map((definition) => definition.interaction))).toEqual(new Set(["sweep", "loosen", "soak"]));
   });
 
   it("keeps every surface reward available without a rare-only dependency", () => {

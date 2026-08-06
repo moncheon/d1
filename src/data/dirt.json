@@ -3,6 +3,7 @@
     "id": "leaf_clump",
     "name": "젖은 낙엽 더미",
     "color": "#9f653f",
+    "interaction": "sweep",
     "rewards": [
       { "itemId": "leaf", "min": 2, "max": 4 },
       { "itemId": "grass", "min": 0, "max": 1 }
@@ -42,6 +43,7 @@
     "id": "grass_mat",
     "name": "엉킨 풀뿌리",
     "color": "#657c48",
+    "interaction": "loosen",
     "rewards": [
       { "itemId": "grass", "min": 2, "max": 4 },
       { "itemId": "leaf", "min": 0, "max": 1 }
@@ -77,6 +79,7 @@
     "id": "mud_cake",
     "name": "굳은 흙덩이",
     "color": "#754d3b",
+    "interaction": "soak",
     "rewards": [
       { "itemId": "soil", "min": 2, "max": 4 },
       { "itemId": "grass", "min": 0, "max": 1 }

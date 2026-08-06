@@ -21,7 +21,7 @@ import type {
   RecipeDefinition,
   ZoneDefinition,
 } from "../entities/types";
-import { completionProgress, surfaceCleaningRate } from "./progression";
+import { completionProgress, isCoreTargetComplete, surfaceCleaningRate } from "./progression";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const buildings = buildingsJson as unknown as BuildingDefinition[];
@@ -82,6 +82,7 @@ export interface QuokkaGuidance {
   memory?: string;
   needs: QuokkaNeed[];
   destination: GuidanceDestination;
+  suggestions: GuidanceDestination[];
   dreams: QuokkaDream[];
 }
 
@@ -174,18 +175,12 @@ function needsForCosts(state: GameState, costs: Cost[]): QuokkaNeed[] {
 }
 
 function allDreams(state: GameState): QuokkaDream[] {
-  const progress = completionProgress(state);
-  const finalSurface = Math.round(surfaceCleaningRate(state, "blocked-connector") * 100);
-  return [
-    {
-      label: "끝 배관에 바람 내기",
-      progress: progress.finalZoneSurfaceReady ? `${finalSurface}% · 바람이 통해` : `${finalSurface}/60%`,
-      ready: progress.finalZoneSurfaceReady,
-    },
-    { label: "청소기와 친해지기", progress: `${state.cleanerLevel}/3단계`, ready: progress.cleanerReady },
-    { label: "냄새 조합 기억하기", progress: `${state.discoveredRecipes.length}/5`, ready: progress.recipesReady },
-    { label: "집을 포근하게 만들기", progress: `${state.happiness}/48`, ready: progress.happinessReady },
-  ];
+  const zoneDreams = maps.zones.map((zone) => {
+    const surface = Math.round(surfaceCleaningRate(state, zone.id) * 100);
+    return { label: zone.name, progress: `${surface}/100%`, ready: surface >= 100 };
+  });
+  const coreCount = maps.zones.filter((zone) => isCoreTargetComplete(state, zone)).length;
+  return [...zoneDreams, { label: "깊은 막힘 걷어내기", progress: `${coreCount}/${maps.zones.length}곳`, ready: coreCount === maps.zones.length }];
 }
 
 function memoryLine(state: GameState, context: GuidanceContext): string | undefined {
@@ -421,17 +416,18 @@ function firstUncleanTarget(state: GameState, zone: ZoneDefinition): DirtTargetD
   return zone.targets.find((target) => !targetState(state, zone.id, target.id)?.surfaceCleaned);
 }
 
-function surfaceGoalDraft(state: GameState, zone: ZoneDefinition, finalZone: boolean): GuidanceDraft {
+function surfaceGoalDraft(state: GameState, zone: ZoneDefinition, targetRate: number): GuidanceDraft {
   const cleaned = zone.targets.filter((target) => targetState(state, zone.id, target.id)?.surfaceCleaned).length;
-  const required = Math.ceil(zone.targets.length * zone.unlockSurfaceRate);
+  const required = Math.ceil(zone.targets.length * targetRate);
   const target = firstUncleanTarget(state, zone);
+  const openingPath = targetRate < 1;
   return {
-    id: `${finalZone ? "final-path" : "open-path"}-${zone.id}`,
+    id: `${openingPath ? "open-path" : "finish-surface"}-${zone.id}`,
     mood: "hopeful",
     thought: stablePick(dialogue.openPath, `${state.day}:${zone.id}`),
-    detail: finalZone
-      ? `${zone.name}의 통행 흔적 ${required}곳 중 ${cleaned}곳을 정리했어. ${required - cleaned}곳만 더 열면 끝 배관에 바람이 통해.`
-      : `${zone.name}의 통행 흔적 ${required}곳 중 ${cleaned}곳을 정리했어. ${required - cleaned}곳만 더 치우면 다음 냄새를 따라갈 수 있어.`,
+    detail: openingPath
+      ? `${zone.name}의 통행 흔적 ${required}곳 중 ${cleaned}곳을 정리했어. ${required - cleaned}곳만 더 치우면 다음 배관이 열려.`
+      : `${zone.name}의 통행 흔적 ${required}곳 중 ${cleaned}곳을 정리했어. ${required - cleaned}곳만 더 닦으면 이 관 전체가 환해져.`,
     destination: {
       scene: "workplace",
       label: `${zone.name}으로 가기`,
@@ -444,7 +440,10 @@ function surfaceGoalDraft(state: GameState, zone: ZoneDefinition, finalZone: boo
 function firstAffordableBuilding(state: GameState): { slot: HouseSlotDefinition; building: BuildingDefinition } | undefined {
   const candidates = maps.homeSlots
     .filter((slot) => state.houseSlots[slot.id] === null)
-    .map((slot) => ({ slot, building: buildings.find((building) => building.id === slot.defaultBuildingId) }))
+    .flatMap((slot) => slot.buildingOptions.map((buildingId) => ({
+      slot,
+      building: buildings.find((building) => building.id === buildingId),
+    })))
     .filter((entry): entry is { slot: HouseSlotDefinition; building: BuildingDefinition } => Boolean(entry.building));
   return candidates
     .filter(({ building }) => needsForCosts(state, building.cost).length === 0)
@@ -454,11 +453,11 @@ function firstAffordableBuilding(state: GameState): { slot: HouseSlotDefinition;
 function buildingGoalDraft(state: GameState): GuidanceDraft {
   const candidates = maps.homeSlots
     .filter((slot) => state.houseSlots[slot.id] === null)
-    .map((slot) => {
-      const building = buildings.find((candidate) => candidate.id === slot.defaultBuildingId);
+    .flatMap((slot) => slot.buildingOptions.map((buildingId) => {
+      const building = buildings.find((candidate) => candidate.id === buildingId);
       const needs = building ? needsForCosts(state, building.cost) : [];
       return { slot, building, needs, missing: needs.reduce((sum, need) => sum + need.missing, 0) };
-    })
+    }))
     .filter((entry): entry is { slot: HouseSlotDefinition; building: BuildingDefinition; needs: QuokkaNeed[]; missing: number } => Boolean(entry.building))
     .sort((left, right) => left.missing - right.missing || right.building.happiness - left.building.happiness);
   const candidate = candidates[0];
@@ -606,6 +605,25 @@ function guidanceForIntent(state: GameState, intent: GameCommand): GuidanceDraft
 
 function selectGuidance(state: GameState, context: GuidanceContext): GuidanceDraft {
   if (state.gameCompleted) return freePlayDraft(state);
+  if (context.scene === "home" && state.dayPhase === "evening") {
+    const affordable = firstAffordableBuilding(state);
+    if (affordable) {
+      return {
+        id: `evening-build-${affordable.slot.id}`,
+        mood: "proud",
+        thought: `${affordable.building.name} 재료가 가방 안에서 바스락거려. 잠들기 전에 같이 놓아 볼까?`,
+        detail: `오늘 모은 것으로 바로 지을 수 있어. 완성하면 포근함이 ${affordable.building.happiness}만큼 자라고, 그 기분은 내일 활동력으로 이어져.`,
+        destination: { scene: "home", label: `${affordable.building.name} 함께 짓기`, focusId: affordable.slot.id },
+      };
+    }
+    return {
+      id: "evening-rest",
+      mood: "restful",
+      thought: "오늘 몫은 다 해냈어. 가방을 내려놓고 이제 푹 쉬자.",
+      detail: "지금 바로 지을 수 있는 집 부품은 없어. 한숨 자고 나면 활동력이 채워지고 집 앞 잔해도 다시 모일 거야.",
+      destination: { scene: "home", label: "포근하게 잠들기", focusId: "rest" },
+    };
+  }
   if (context.intent) {
     const intentGuide = guidanceForIntent(state, context.intent);
     if (intentGuide) return intentGuide;
@@ -645,10 +663,8 @@ function selectGuidance(state: GameState, context: GuidanceContext): GuidanceDra
     if (!state.unlockedZones.includes(zone.id)) continue;
     const required = Math.ceil(zone.targets.length * zone.unlockSurfaceRate);
     const cleaned = zone.targets.filter((target) => targetState(state, zone.id, target.id)?.surfaceCleaned).length;
-    const needsPath = zone.nextZoneId
-      ? !state.unlockedZones.includes(zone.nextZoneId)
-      : !completionProgress(state).finalZoneSurfaceReady;
-    if (needsPath && cleaned < required) return surfaceGoalDraft(state, zone, !zone.nextZoneId);
+    const needsPath = Boolean(zone.nextZoneIds?.some((nextZoneId) => !state.unlockedZones.includes(nextZoneId)));
+    if (needsPath && cleaned < required) return surfaceGoalDraft(state, zone, zone.unlockSurfaceRate);
   }
 
   if (state.cleanerLevel < 3) return guideForUpgrade(state, 3, 0);
@@ -656,6 +672,22 @@ function selectGuidance(state: GameState, context: GuidanceContext): GuidanceDra
   if (state.discoveredRecipes.length < 5) {
     const recipeGuide = recipeDiscoveryDraft(state);
     if (recipeGuide) return recipeGuide;
+  }
+
+  for (const zone of maps.zones) {
+    if (!state.unlockedZones.includes(zone.id) || isCoreTargetComplete(state, zone)) continue;
+    const target = zone.targets.find((candidate) => candidate.id === zone.completionTargetId);
+    if (!target) continue;
+    const intentGuide = guidanceForIntent(state, {
+      type: "CLEAN_DIRT",
+      zoneId: zone.id,
+      targetId: target.id,
+    });
+    if (intentGuide) return intentGuide;
+  }
+
+  for (const zone of maps.zones) {
+    if (surfaceCleaningRate(state, zone.id) < 1) return surfaceGoalDraft(state, zone, 1);
   }
 
   if (state.happiness < 48) return buildingGoalDraft(state);
@@ -671,10 +703,26 @@ function selectGuidance(state: GameState, context: GuidanceContext): GuidanceDra
 
 export function getQuokkaGuidance(state: GameState, context: GuidanceContext): QuokkaGuidance {
   const draft = selectGuidance(state, context);
+  const suggestions = [draft.destination];
+  const exactOnly = context.recentEventType === "RULE_REJECTED" || draft.id === "first-clean" || state.dayPhase === "evening";
+  if (!exactOnly) {
+    const alternative: GuidanceDestination = draft.destination.scene === "home"
+      ? {
+        scene: "workplace",
+        label: "마음 가는 배관 둘러보기",
+        zoneId: state.unlockedZones.at(-1) ?? "pipe-entrance",
+      }
+      : {
+        scene: "home",
+        label: "집을 천천히 돌보기",
+      };
+    suggestions.push(alternative);
+  }
   return {
     ...draft,
     memory: memoryLine(state, context),
     needs: draft.needs ?? [],
+    suggestions,
     dreams: allDreams(state),
   };
 }

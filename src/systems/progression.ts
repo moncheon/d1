@@ -1,9 +1,11 @@
 import buildingsJson from "../data/buildings.json";
+import dirtJson from "../data/dirt.json";
 import mapsJson from "../data/maps.json";
 import type { GameState } from "../core/gameState";
-import type { BuildingDefinition, ZoneDefinition } from "../entities/types";
+import type { BuildingDefinition, DirtDefinition, ZoneDefinition } from "../entities/types";
 
 const buildings = buildingsJson as unknown as BuildingDefinition[];
+const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
 
 export function activityForHappiness(happiness: number): number {
@@ -70,37 +72,45 @@ export function reconcileUnlockedZones(state: GameState): ZoneUnlock[] {
   const unlocked: ZoneUnlock[] = [];
 
   for (const zone of zones) {
-    if (!state.unlockedZones.includes(zone.id) || !zone.nextZoneId) continue;
+    if (!state.unlockedZones.includes(zone.id) || !zone.nextZoneIds?.length) continue;
 
     const surfaceRate = surfaceCleaningRate(state, zone.id);
-    if (surfaceRate < zone.unlockSurfaceRate || state.unlockedZones.includes(zone.nextZoneId)) continue;
-
-    const nextZone = zones.find((candidate) => candidate.id === zone.nextZoneId);
-    state.unlockedZones.push(zone.nextZoneId);
-    unlocked.push({
-      zoneId: zone.nextZoneId,
-      sourceZoneId: zone.id,
-      surfaceRate,
-      name: nextZone?.name ?? "다음 구역",
-    });
+    if (surfaceRate < zone.unlockSurfaceRate) continue;
+    for (const nextZoneId of zone.nextZoneIds) {
+      if (state.unlockedZones.includes(nextZoneId)) continue;
+      const nextZone = zones.find((candidate) => candidate.id === nextZoneId);
+      state.unlockedZones.push(nextZoneId);
+      unlocked.push({
+        zoneId: nextZoneId,
+        sourceZoneId: zone.id,
+        surfaceRate,
+        name: nextZone?.name ?? "다음 구역",
+      });
+    }
   }
 
   return unlocked;
 }
 
 export interface CompletionProgress {
-  finalZoneSurfaceReady: boolean;
-  cleanerReady: boolean;
-  recipesReady: boolean;
-  happinessReady: boolean;
+  allZonesSurfaceReady: boolean;
+  coreTargetsReady: boolean;
+}
+
+export function isCoreTargetComplete(state: GameState, zone: ZoneDefinition): boolean {
+  const target = zone.targets.find((candidate) => candidate.id === zone.completionTargetId);
+  const dirt = dirtDefinitions.find((candidate) => candidate.id === target?.dirtTypeId);
+  const deepest = state.zoneCleaningState[zone.id]?.targets[zone.completionTargetId]?.deepestLayer ?? 0;
+  const maximum = dirt ? Math.max(1, ...dirt.layers.map((layer) => layer.level)) : Number.POSITIVE_INFINITY;
+  return deepest >= maximum;
 }
 
 export function completionProgress(state: GameState): CompletionProgress {
+  const allZonesSurfaceReady = zones.every((zone) => surfaceCleaningRate(state, zone.id) >= 1);
+  const coreTargetsReady = zones.every((zone) => isCoreTargetComplete(state, zone));
   return {
-    finalZoneSurfaceReady: surfaceCleaningRate(state, "blocked-connector") >= 0.6,
-    cleanerReady: state.cleanerLevel >= 3,
-    recipesReady: state.discoveredRecipes.length >= 5,
-    happinessReady: state.happiness >= 48,
+    allZonesSurfaceReady,
+    coreTargetsReady,
   };
 }
 

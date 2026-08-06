@@ -1,7 +1,7 @@
 import * as Phaser from "phaser";
 import { getGameEngine } from "../core/gameContext";
 import { completionProgress } from "../systems/progression";
-import { addButton, addQuokka, addTitle } from "../ui/components";
+import { addButton, addQuokka, addTitle, setQuokkaPose } from "../ui/components";
 import { palette } from "../ui/palette";
 
 export class ResultScene extends Phaser.Scene {
@@ -13,18 +13,21 @@ export class ResultScene extends Phaser.Scene {
     const state = getGameEngine().getState();
     const progress = completionProgress(getGameEngine().snapshot());
     this.cameras.main.setBackgroundColor("#293b36");
-    this.add.circle(512, 260, 260, 0x6f8d65, 0.18);
-    addQuokka(this, 512, 145).setScale(1.5);
-    addTitle(this, 512, 235, "따뜻한 집, 깨끗한 배관", 32).setOrigin(0.5);
-    this.add.text(512, 290, "쿼카가 자연 재료로 삶의 터전을 완성했습니다.\n남은 오염과 레시피는 엔딩 후에도 계속 정리할 수 있습니다.", {
+    this.add.image(512, 288, "home-diorama").setDisplaySize(1024, 576);
+    this.add.rectangle(512, 288, 1024, 576, 0x17231f, 0.62);
+    this.add.circle(512, 260, 260, 0xe0be72, 0.16);
+    const quokka = addQuokka(this, 512, 145).setScale(1.35);
+    setQuokkaPose(quokka, 9);
+    addTitle(this, 512, 235, "배관망 1단계 정리 완료", 32).setOrigin(0.5);
+    this.add.text(512, 290, "모든 구역의 표면과 깊은 막힘을 정리했습니다.\n닫힌 배관 너머의 이야기는 다음 단계에서 이어집니다.", {
       color: "#e9efdf", fontSize: "17px", align: "center", lineSpacing: 8,
       fontFamily: '"Malgun Gothic", sans-serif',
     }).setOrigin(0.5);
     const checks = [
-      [progress.finalZoneSurfaceReady, "마지막 구역 통행 청소율 60%"],
-      [progress.cleanerReady, "청소기 3단계"],
-      [progress.recipesReady, `레시피 ${state.discoveredRecipes.length}/5 발견`],
-      [progress.happinessReady, `행복도 ${state.happiness}/48`],
+      [progress.allZonesSurfaceReady, "세 구역 통행 청소율 100%"],
+      [progress.coreTargetsReady, "핵심 심층 오염 3곳 완전 청소"],
+      [true, `완성한 집 행복도 ${state.happiness}`],
+      [true, `함께 보낸 시간 ${state.day}일`],
     ] as const;
     checks.forEach(([ready, label], index) => {
       this.add.text(350 + (index % 2) * 330, 365 + Math.floor(index / 2) * 46, `${ready ? "✓" : "○"} ${label}`, {

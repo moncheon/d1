@@ -123,15 +123,24 @@ function openNotebook(
     dreamObjects.push(seed, sprout, label, progress);
   });
 
-  const follow = addButton(scene, 512, 480, 310, 48, guidance.destination.label, () => {
-    trackGuidanceInteraction("followed", guidance.id, options.sceneName, getGameEngine().getState());
-    overlay.destroy();
-    options.onFollow(guidance.destination);
-  }, { fill: palette.grass, hoverFill: palette.clean, fontSize: 14 });
+  const follows = guidance.suggestions.map((destination, index) => addButton(
+    scene,
+    guidance.suggestions.length === 1 ? 512 : 360 + index * 304,
+    480,
+    guidance.suggestions.length === 1 ? 310 : 278,
+    48,
+    destination.label,
+    () => {
+      trackGuidanceInteraction("followed", `${guidance.id}:${index}`, options.sceneName, getGameEngine().getState());
+      overlay.destroy();
+      options.onFollow(destination);
+    },
+    { fill: index === 0 ? palette.grass : palette.warmDark, hoverFill: palette.clean, fontSize: 13 },
+  ));
 
   overlay.add([
     veil, paper, fold, portrait, title, close, memory, nowLabel, now, detail,
-    ...needObjects, dreamTitle, ...dreamObjects, follow,
+    ...needObjects, dreamTitle, ...dreamObjects, ...follows,
   ]);
   playQuokkaReaction(scene, portrait, guidance.mood);
 }

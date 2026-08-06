@@ -1,5 +1,7 @@
 import * as Phaser from "phaser";
 import { palette } from "./palette";
+import { getGameEngine } from "../core/gameContext";
+import { playSoundCue } from "./sound";
 
 export interface ButtonOptions {
   fill?: number;
@@ -63,12 +65,13 @@ export function addButton(
     background.on("pointerover", () => background.setFillStyle(hoverFill));
     background.on("pointerout", () => background.setFillStyle(fill));
     background.on("pointerdown", () => {
+      playSoundCue("tap", getGameEngine().getState().preferences.masterVolume);
       background.setScale(0.97);
       scene.time.delayedCall(70, () => background.setScale(1));
       onClick();
     });
   }
-  if (options.highlighted) {
+  if (options.highlighted && !getGameEngine().getState().preferences.reducedMotion) {
     scene.tweens.add({
       targets: highlight,
       alpha: { from: 0.25, to: 1 },
@@ -127,6 +130,13 @@ export function showToast(
 }
 
 export function addQuokka(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Container {
+  if (scene.textures.exists("quokka-poses")) {
+    const shadow = scene.add.ellipse(0, 25, 54, 16, 0x101719, 0.3);
+    const sprite = scene.add.sprite(0, 0, "quokka-poses", 0).setDisplaySize(112, 111);
+    const container = scene.add.container(x, y, [shadow, sprite]);
+    container.setData("poseSprite", sprite);
+    return container;
+  }
   const shadow = scene.add.ellipse(0, 22, 54, 18, 0x101719, 0.32);
   const body = scene.add.ellipse(0, 4, 48, 54, 0xa66e49);
   const leftEar = scene.add.circle(-15, -20, 10, 0x855538);
@@ -151,12 +161,22 @@ export function addQuokka(scene: Phaser.Scene, x: number, y: number): Phaser.Gam
   ]);
 }
 
+export function setQuokkaPose(quokka: Phaser.GameObjects.Container | undefined, frame: number): void {
+  const sprite = quokka?.getData("poseSprite") as Phaser.GameObjects.Sprite | undefined;
+  if (sprite) sprite.setFrame(Phaser.Math.Clamp(frame, 0, 11));
+}
+
 export function playQuokkaReaction(
   scene: Phaser.Scene,
   quokka: Phaser.GameObjects.Container | undefined,
   mood: "curious" | "hopeful" | "proud" | "restful",
 ): void {
   if (!quokka) return;
+  if (mood === "curious") setQuokkaPose(quokka, 10);
+  else if (mood === "proud") setQuokkaPose(quokka, 9);
+  else if (mood === "restful") setQuokkaPose(quokka, 11);
+  else setQuokkaPose(quokka, 0);
+  if (getGameEngine().getState().preferences.reducedMotion) return;
   if (mood === "curious") {
     scene.tweens.add({ targets: quokka, angle: { from: -2, to: 2 }, duration: 260, yoyo: true, repeat: 2 });
     return;

@@ -6,7 +6,10 @@
     "theme": "dry_brush",
     "happiness": 3,
     "cost": [{ "itemId": "leaf", "amount": 4 }, { "itemId": "grass", "amount": 2 }],
-    "color": "#d49555"
+    "color": "#d49555",
+    "description": "바스락거리는 잎을 포개 만든 가벼운 잠자리",
+    "spriteKey": "leaf-bed",
+    "routineKey": "sleep-rustle"
   },
   {
     "id": "shrub_wall",
@@ -15,7 +18,10 @@
     "theme": "dry_brush",
     "happiness": 3,
     "cost": [{ "itemId": "grass", "amount": 4 }, { "itemId": "soil", "amount": 2 }],
-    "color": "#738b55"
+    "color": "#738b55",
+    "description": "바람을 막고 집 냄새를 오래 품는 생울타리",
+    "spriteKey": "shrub-wall",
+    "routineKey": "tidy-wall"
   },
   {
     "id": "leaf_roof",
@@ -24,7 +30,10 @@
     "theme": "dry_brush",
     "happiness": 4,
     "cost": [{ "itemId": "leaf", "amount": 6 }, { "itemId": "grass", "amount": 2 }],
-    "color": "#b96f42"
+    "color": "#b96f42",
+    "description": "물방울 소리를 포근하게 바꾸는 넓은 지붕",
+    "spriteKey": "leaf-roof",
+    "routineKey": "listen-rain"
   },
   {
     "id": "dirt_path",
@@ -33,7 +42,10 @@
     "theme": "dry_brush",
     "happiness": 1,
     "cost": [{ "itemId": "soil", "amount": 4 }],
-    "color": "#b7845f"
+    "color": "#b7845f",
+    "description": "발바닥에 익숙한 냄새를 남기는 부드러운 길",
+    "spriteKey": "dirt-path",
+    "routineKey": "pace-path"
   },
   {
     "id": "flower_bed",
@@ -47,7 +59,10 @@
       { "itemId": "seed", "amount": 1 },
       { "itemId": "flower", "amount": 1 }
     ],
-    "color": "#94aa62"
+    "color": "#94aa62",
+    "description": "찾아온 씨앗과 꽃을 함께 돌보는 작은 화단",
+    "spriteKey": "flower-bed",
+    "routineKey": "sniff-flowers"
   },
   {
     "id": "moss_decor",
@@ -56,6 +71,81 @@
     "theme": "moss",
     "happiness": 5,
     "cost": [{ "itemId": "grass", "amount": 4 }, { "itemId": "moss", "amount": 1 }],
-    "color": "#70a77a"
+    "color": "#70a77a",
+    "description": "축축한 배관에서 데려온 이끼가 빛나는 장식",
+    "spriteKey": "moss-decor",
+    "routineKey": "touch-moss"
+  },
+  {
+    "id": "moss_nest",
+    "name": "이끼 둥지",
+    "category": "bed",
+    "theme": "moss",
+    "happiness": 4,
+    "cost": [{ "itemId": "leaf", "amount": 2 }, { "itemId": "grass", "amount": 3 }, { "itemId": "moss", "amount": 1 }],
+    "color": "#6f9b68",
+    "description": "서늘하고 폭신한 이끼로 감싼 둥근 잠자리",
+    "spriteKey": "moss-nest",
+    "routineKey": "curl-moss"
+  },
+  {
+    "id": "woven_wall",
+    "name": "엮은 풀벽",
+    "category": "wall",
+    "theme": "woven",
+    "happiness": 4,
+    "cost": [{ "itemId": "grass", "amount": 3 }, { "itemId": "fiber", "amount": 1 }],
+    "color": "#9a9a5e",
+    "description": "섬유와 풀을 촘촘히 엮어 만든 향긋한 벽",
+    "spriteKey": "woven-wall",
+    "routineKey": "weave-wall"
+  },
+  {
+    "id": "flower_canopy",
+    "name": "꽃잎 차양",
+    "category": "roof",
+    "theme": "bloom",
+    "happiness": 5,
+    "cost": [{ "itemId": "leaf", "amount": 3 }, { "itemId": "grass", "amount": 3 }, { "itemId": "flower", "amount": 1 }],
+    "color": "#c98278",
+    "description": "빛이 꽃잎 사이로 스며드는 향기로운 차양",
+    "spriteKey": "flower-canopy",
+    "routineKey": "watch-petals"
+  },
+  {
+    "id": "clay_steps",
+    "name": "점토 디딤돌",
+    "category": "path",
+    "theme": "mineral",
+    "happiness": 2,
+    "cost": [{ "itemId": "soil", "amount": 3 }, { "itemId": "clay", "amount": 1 }],
+    "color": "#aa735a",
+    "description": "흙 묻은 발도 미끄럽지 않은 단단한 디딤돌",
+    "spriteKey": "clay-steps",
+    "routineKey": "hop-steps"
+  },
+  {
+    "id": "sprout_bed",
+    "name": "새싹 화단",
+    "category": "flowerbed",
+    "theme": "dry_brush",
+    "happiness": 2,
+    "cost": [{ "itemId": "grass", "amount": 3 }, { "itemId": "soil", "amount": 2 }, { "itemId": "seed", "amount": 1 }],
+    "color": "#85a75c",
+    "description": "내일 자랄 잎을 기다리는 소박한 씨앗 자리",
+    "spriteKey": "sprout-bed",
+    "routineKey": "water-sprout"
+  },
+  {
+    "id": "resin_chime",
+    "name": "수지 풍경",
+    "category": "decor",
+    "theme": "mineral",
+    "happiness": 5,
+    "cost": [{ "itemId": "fiber", "amount": 1 }, { "itemId": "resin", "amount": 1 }, { "itemId": "clay", "amount": 1 }],
+    "color": "#d4ad63",
+    "description": "바람이 지나가면 작고 맑은 소리를 내는 장식",
+    "spriteKey": "resin-chime",
+    "routineKey": "listen-chime"
   }
 ]

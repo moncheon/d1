@@ -40,16 +40,18 @@ describe("GameEngine core loop", () => {
     expect(engine.snapshot()).toEqual(afterFirstClean);
   });
 
-  it("automatically ends the day after the fifth activity", () => {
+  it("returns home after the fifth activity and advances the day only after sleep", () => {
     const engine = new GameEngine();
+    let finalEvents = [] as ReturnType<typeof engine.dispatch>;
     for (let index = 1; index <= 5; index += 1) {
-      engine.dispatch(commands.cleanDirt("pipe-entrance", `entrance-0${index}`));
+      finalEvents = engine.dispatch(commands.cleanDirt("pipe-entrance", `entrance-0${index}`));
     }
 
-    const state = engine.getState();
-    expect(state.day).toBe(2);
-    expect(state.currentActivity).toBe(5);
-    expect(state.dailyLeafPileRemaining).toBe(2);
+    expect(finalEvents.some((event) => event.type === "WORK_ENDED")).toBe(true);
+    expect(engine.getState()).toMatchObject({ day: 1, dayPhase: "evening", currentActivity: 0 });
+
+    engine.dispatch(commands.endDay());
+    expect(engine.getState()).toMatchObject({ day: 2, dayPhase: "working", currentActivity: 5 });
   });
 
   it("unlocks the next zone at exactly sixty percent surface cleaning", () => {
@@ -65,21 +67,22 @@ describe("GameEngine core loop", () => {
 
     expect(sixthEvents.some((event) => event.type === "ZONE_UNLOCKED")).toBe(true);
     expect(engine.getState().unlockedZones).toContain("curved-drain");
+    expect(engine.getState().unlockedZones).toContain("blocked-connector");
+    expect(engine.getState().gameCompleted).toBe(false);
   });
 
-  it("unlocks the final zone after the curved drain passes sixty percent", () => {
+  it("keeps both branch routes open regardless of which one is cleaned first", () => {
     const initialState = createInitialGameState();
-    initialState.currentActivity = 10;
+    initialState.currentActivity = 20;
     initialState.maxActivity = 10;
-    initialState.unlockedZones.push("curved-drain");
     const engine = new GameEngine({ initialState });
 
-    let unlockEvents = engine.dispatch(commands.cleanDirt("curved-drain", "drain-01"));
-    for (let index = 2; index <= 8; index += 1) {
-      unlockEvents = engine.dispatch(commands.cleanDirt("curved-drain", `drain-0${index}`));
+    for (let index = 1; index <= 6; index += 1) {
+      engine.dispatch(commands.cleanDirt("pipe-entrance", `entrance-0${index}`));
     }
+    engine.dispatch(commands.cleanDirt("blocked-connector", "connector-01"));
 
-    expect(unlockEvents.some((event) => event.type === "ZONE_UNLOCKED")).toBe(true);
+    expect(engine.getState().unlockedZones).toContain("curved-drain");
     expect(engine.getState().unlockedZones).toContain("blocked-connector");
   });
 
@@ -119,10 +122,60 @@ describe("GameEngine core loop", () => {
     expect(engine.getState().happiness).toBe(6);
     expect(engine.getState().maxActivity).toBe(5);
     expect(engine.getState().inventory.leaf).toBe(16);
+    expect(engine.getState().currentActivity).toBe(5);
+    expect(engine.getState().experiencedBuildCategories).toEqual(expect.arrayContaining(["bed", "wall"]));
 
     engine.dispatch(commands.endDay());
     expect(engine.getState().maxActivity).toBe(6);
     expect(engine.getState().currentActivity).toBe(6);
+  });
+
+  it("replaces a house part atomically after refunding the old choice", () => {
+    const initialState = createInitialGameState();
+    initialState.inventory = { leaf: 20, grass: 20, moss: 1 };
+    const engine = new GameEngine({ initialState });
+
+    engine.dispatch(commands.buildHouse("bed-1", "leaf_bed"));
+    const events = engine.dispatch(commands.replaceHouse("bed-1", "moss_nest"));
+
+    expect(events.some((event) => event.type === "HOUSE_REMOVED")).toBe(true);
+    expect(events.some((event) => event.type === "HOUSE_BUILT")).toBe(true);
+    expect(engine.getState()).toMatchObject({
+      houseSlots: { "bed-1": "moss_nest" },
+      inventory: { leaf: 18, grass: 17, moss: 0 },
+      happiness: 4,
+    });
+  });
+
+  it("awards one representative material for careful cleaning", () => {
+    const standard = new GameEngine({ initialState: createInitialGameState() });
+    const careful = new GameEngine({ initialState: createInitialGameState() });
+    standard.dispatch(commands.cleanDirt("pipe-entrance", "entrance-01"));
+    const events = careful.dispatch(commands.cleanDirt("pipe-entrance", "entrance-01", undefined, {
+      technique: "sweep",
+      quality: "careful",
+      durationMs: 2400,
+      assisted: false,
+    }));
+
+    expect(careful.getState().inventory.leaf).toBe((standard.getState().inventory.leaf ?? 0) + 1);
+    expect(events.find((event) => event.type === "DIRT_CLEANED")?.data).toMatchObject({
+      technique: "sweep",
+      quality: "careful",
+      bonusGained: { leaf: 1 },
+    });
+  });
+
+  it("stores shared memories once even when the same kind of event repeats", () => {
+    const initialState = createInitialGameState();
+    initialState.currentActivity = 5;
+    const engine = new GameEngine({ initialState });
+    const first = engine.dispatch(commands.cleanDirt("pipe-entrance", "entrance-01"));
+    const second = engine.dispatch(commands.cleanDirt("pipe-entrance", "entrance-02"));
+
+    expect(first.some((event) => event.type === "MEMORY_UNLOCKED")).toBe(true);
+    expect(second.some((event) => event.type === "MEMORY_UNLOCKED")).toBe(false);
+    expect(engine.getState().memories.filter((entry) => entry.id === "first-clean")).toHaveLength(1);
   });
 
   it("refunds all building materials without spending activity", () => {
@@ -137,6 +190,19 @@ describe("GameEngine core loop", () => {
     expect(engine.getState().inventory).toMatchObject({ leaf: 4, grass: 2 });
     expect(engine.getState().currentActivity).toBe(activityAfterBuild);
     expect(engine.getState().houseSlots["bed-1"]).toBeNull();
+  });
+
+  it("allows hand-building after work ends without consuming activity", () => {
+    const initialState = createInitialGameState();
+    initialState.dayPhase = "evening";
+    initialState.currentActivity = 0;
+    initialState.inventory = { leaf: 4, grass: 2 };
+    const engine = new GameEngine({ initialState });
+
+    const events = engine.dispatch(commands.buildHouse("bed-1", "leaf_bed"));
+
+    expect(events.some((event) => event.type === "HOUSE_BUILT")).toBe(true);
+    expect(engine.getState()).toMatchObject({ dayPhase: "evening", currentActivity: 0, happiness: 3 });
   });
 
   it("autosaves successful commands", () => {
@@ -259,27 +325,23 @@ describe("GameEngine core loop", () => {
     expect(equippedEngine.getState().zoneCleaningState["pipe-entrance"]?.targets["entrance-01"]?.deepestLayer).toBe(4);
   });
 
-  it("emits the ending once all four completion conditions are met", () => {
+  it("completes step one only at one hundred percent surface cleaning plus all core targets", () => {
     const initialState = createInitialGameState();
-    initialState.cleanerLevel = 3;
-    initialState.happiness = 48;
-    initialState.discoveredRecipes = [
-      "compressed_leaf_mix",
-      "root_grass_mix",
-      "stable_clay_mix",
-      "mixed_organic_mix",
-      "resin_release_mix",
-    ];
-    const finalTargets = initialState.zoneCleaningState["blocked-connector"]?.targets;
-    if (!finalTargets) throw new Error("fixture zone missing");
-    Object.values(finalTargets).slice(0, 9).forEach((target) => {
-      target.surfaceCleaned = true;
-      target.deepestLayer = 1;
-    });
+    initialState.unlockedZones = ["pipe-entrance", "curved-drain", "blocked-connector"];
+    for (const zone of Object.values(initialState.zoneCleaningState)) {
+      for (const target of Object.values(zone.targets)) {
+        target.surfaceCleaned = true;
+        target.deepestLayer = 1;
+      }
+    }
+    initialState.zoneCleaningState["pipe-entrance"]!.targets["entrance-01"]!.deepestLayer = 4;
+    initialState.zoneCleaningState["curved-drain"]!.targets["drain-04"]!.deepestLayer = 4;
+    initialState.zoneCleaningState["blocked-connector"]!.targets["connector-04"]!.deepestLayer = 4;
     const engine = new GameEngine({ initialState });
 
     const events = engine.dispatch(commands.endDay());
 
+    expect(events.some((event) => event.type === "STEP_ONE_COMPLETED")).toBe(true);
     expect(events.some((event) => event.type === "GAME_COMPLETED")).toBe(true);
     expect(engine.getState().gameCompleted).toBe(true);
   });
