@@ -78,10 +78,16 @@ export class GameEngine {
       }
       events.push(...reconcileMemories(this.state, events));
       if (this.saveRepository) {
-        this.saveRepository.save(this.state);
-        events.push(gameEvent("SAVE_COMPLETED", "진행 상황을 저장했습니다.", {
-          saveVersion: this.state.saveVersion,
-        }));
+        try {
+          this.saveRepository.save(this.state);
+          events.push(gameEvent("SAVE_COMPLETED", "진행 상황을 저장했습니다.", {
+            saveVersion: this.state.saveVersion,
+          }));
+        } catch {
+          events.push(gameEvent("SAVE_FAILED", "행동은 완료됐지만 브라우저 저장 공간에 기록하지 못했어요. 기록을 내보낸 뒤 공간을 확인해 주세요.", {
+            saveVersion: this.state.saveVersion,
+          }));
+        }
       }
       for (const event of events) this.analytics.track(event, this.state);
       return events;

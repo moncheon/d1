@@ -1,9 +1,6 @@
 import * as Phaser from "phaser";
-import { ConsoleAnalytics } from "../analytics/analytics";
-import { setGameEngine } from "../core/gameContext";
-import { GameEngine } from "../core/gameEngine";
-import { createInitialGameState } from "../core/gameState";
-import { BrowserSaveRepository } from "../systems/saving";
+import { setGameSession } from "../core/sessionContext";
+import { BrowserGameSession } from "../systems/gameSession";
 import { calculateHappiness } from "../systems/progression";
 import { memoryDefinitions } from "../systems/memories";
 import mapsJson from "../data/maps.json";
@@ -70,8 +67,9 @@ export class BootScene extends Phaser.Scene {
         (newYEdges[row + 1] ?? 1254) - (newYEdges[row] ?? 0),
       );
     });
-    const saveRepository = new BrowserSaveRepository(window.localStorage);
-    const state = saveRepository.load() ?? createInitialGameState();
+    const session = new BrowserGameSession(window.localStorage);
+    setGameSession(session);
+    const state = session.initialize(import.meta.env.DEV).snapshot();
     const qa = import.meta.env.DEV ? new URLSearchParams(window.location.search) : undefined;
     if (qa?.get("routes") === "all") {
       state.unlockedZones = ["pipe-entrance", "curved-drain", "blocked-connector"];
@@ -97,15 +95,13 @@ export class BootScene extends Phaser.Scene {
     if (qa?.get("memories") === "all") {
       state.memories = memoryDefinitions.map((memory, index) => ({ id: memory.id, day: index + 1 }));
     }
-    setGameEngine(
-      new GameEngine({
-        initialState: state,
-        saveRepository,
-        analytics: new ConsoleAnalytics(),
-      }),
-    );
+    const qaKeys = ["scene", "routes", "home", "memories", "zone", "cleaning", "modal", "decorate"];
+    const hasQaRoute = Boolean(qa && qaKeys.some((key) => qa.has(key)));
+    if (hasQaRoute) session.activateQaState(state);
     const scene = qa?.get("scene");
-    if (scene === "map") {
+    if (!hasQaRoute) {
+      this.scene.start("TitleScene");
+    } else if (scene === "map") {
       this.scene.start("PipeMapScene", { focusZoneId: qa?.get("zone") ?? "curved-drain" });
     } else if (scene === "workplace") {
       this.scene.start("WorkplaceScene", {

@@ -5,6 +5,20 @@ export interface AnalyticsSink {
   track(event: GameEvent, state: Readonly<GameState>): void;
 }
 
+export class CompositeAnalytics implements AnalyticsSink {
+  public constructor(private readonly sinks: AnalyticsSink[]) {}
+
+  public track(event: GameEvent, state: Readonly<GameState>): void {
+    for (const sink of this.sinks) {
+      try {
+        sink.track(event, state);
+      } catch (error) {
+        console.warn("[telemetry] 기록을 남기지 못했습니다.", error);
+      }
+    }
+  }
+}
+
 const trackedEvents = new Set<GameEvent["type"]>([
   "DIRT_CLEANED",
   "DEEP_LAYER_CLEANED",

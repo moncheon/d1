@@ -35,6 +35,19 @@ export class BrowserSaveRepository implements SaveRepository {
     }
   }
 
+  public hasRawSave(): boolean {
+    return this.storage.getItem(BrowserSaveRepository.SAVE_KEY) !== null;
+  }
+
+  public readRaw(): string | null {
+    return this.storage.getItem(BrowserSaveRepository.SAVE_KEY);
+  }
+
+  public replaceRaw(raw: string | null): void {
+    if (raw === null) this.clear();
+    else this.storage.setItem(BrowserSaveRepository.SAVE_KEY, raw);
+  }
+
   public save(state: GameState): void {
     this.storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(state));
   }

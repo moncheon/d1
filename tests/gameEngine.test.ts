@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { commands } from "../src/core/commands";
 import { GameEngine } from "../src/core/gameEngine";
 import { createInitialGameState } from "../src/core/gameState";
-import { MemorySaveRepository } from "../src/systems/saving";
+import { MemorySaveRepository, type SaveRepository } from "../src/systems/saving";
 
 describe("GameEngine core loop", () => {
   it("starts with the five-action first day", () => {
@@ -419,5 +419,19 @@ describe("GameEngine core loop", () => {
     expect(events.some((event) => event.type === "STEP_ONE_COMPLETED")).toBe(true);
     expect(events.some((event) => event.type === "GAME_COMPLETED")).toBe(true);
     expect(engine.getState().gameCompleted).toBe(true);
+  });
+
+  it("keeps an in-memory action when browser persistence fails", () => {
+    const failingRepository: SaveRepository = {
+      load: () => null,
+      clear: () => undefined,
+      save: () => { throw new Error("quota"); },
+    };
+    const engine = new GameEngine({ saveRepository: failingRepository });
+
+    const events = engine.dispatch(commands.updatePreferences({ reducedMotion: true }));
+
+    expect(engine.getState().preferences.reducedMotion).toBe(true);
+    expect(events.some((event) => event.type === "SAVE_FAILED")).toBe(true);
   });
 });

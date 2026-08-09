@@ -6,6 +6,7 @@ import { WorkshopScene } from "./scenes/home/WorkshopScene";
 import { WorkplaceScene } from "./scenes/workplace/WorkplaceScene";
 import { PipeMapScene } from "./scenes/workplace/PipeMapScene";
 import { ResultScene } from "./scenes/ResultScene";
+import { TitleScene } from "./scenes/TitleScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -15,7 +16,7 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: "#243238",
   pixelArt: false,
   antialias: true,
-  scene: [BootScene, HomeScene, WorkshopScene, PipeMapScene, WorkplaceScene, ResultScene],
+  scene: [BootScene, TitleScene, HomeScene, WorkshopScene, PipeMapScene, WorkplaceScene, ResultScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

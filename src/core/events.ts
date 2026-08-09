@@ -20,6 +20,7 @@ export type GameEventType =
   | "DAY_ENDED"
   | "GAME_COMPLETED"
   | "SAVE_COMPLETED"
+  | "SAVE_FAILED"
   | "RULE_REJECTED";
 
 export interface GameEvent<T = Record<string, unknown>> {

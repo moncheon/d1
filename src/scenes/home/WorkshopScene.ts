@@ -257,12 +257,13 @@ export class WorkshopScene extends Phaser.Scene {
       return;
     }
     const notable = events.find((event) => ["RECIPE_DISCOVERED", "MIXTURE_ATTEMPTED", "ACCESSORY_CRAFTED", "ACCESSORY_EQUIPPED", "ITEM_CRAFTED"].includes(event.type));
+    const saveFailed = events.find((event) => event.type === "SAVE_FAILED");
     if (notable?.type === "MIXTURE_ATTEMPTED" && notable.data.success === true && typeof notable.data.recipeId === "string") {
       this.returnSolutionId = recipes.find((recipe) => recipe.id === notable.data.recipeId)?.outputId;
     }
     this.scene.restart({
       ...this.restartData(),
-      message: notable?.message ?? "완료했습니다.",
+      message: saveFailed?.message ?? notable?.message ?? "완료했습니다.",
       recentEventType: notable?.type,
     });
   }

@@ -534,6 +534,8 @@ export class WorkplaceScene extends Phaser.Scene {
       this.refreshTargetView(target);
       this.progressText?.setText(this.progressLabel());
       showToast(this, message, "success", 850);
+      const saveFailed = events.find((event) => event.type === "SAVE_FAILED");
+      if (saveFailed) this.time.delayedCall(900, () => showToast(this, saveFailed.message, "error", 1800));
       if (events.some((event) => event.type === "STEP_ONE_COMPLETED")) {
         this.time.delayedCall(900, () => this.scene.start("HomeScene", {
           recentEventType: "STEP_ONE_COMPLETED",

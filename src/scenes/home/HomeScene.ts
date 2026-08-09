@@ -7,6 +7,7 @@ import recipesJson from "../../data/recipes.json";
 import { commands, type GameCommand } from "../../core/commands";
 import type { GameEvent } from "../../core/events";
 import { getGameEngine } from "../../core/gameContext";
+import { getGameSession } from "../../core/sessionContext";
 import type {
   BuildingDefinition,
   AccessoryDefinition,
@@ -23,6 +24,7 @@ import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 import { memoryDefinitions } from "../../systems/memories";
 import { bindAmbient, playSoundCue } from "../../ui/sound";
+import { openRecordManager } from "../../ui/recordManager";
 
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
@@ -96,6 +98,8 @@ export class HomeScene extends Phaser.Scene {
       const anchor = homeAnchors[0];
       if (anchor) this.openBuildingPicker(anchor);
     }
+    const storageNotice = getGameSession().consumeStorageNotice();
+    if (storageNotice) this.time.delayedCall(250, () => showToast(this, storageNotice, "error", 2200));
   }
 
   private drawBackground(): void {
@@ -328,7 +332,7 @@ export class HomeScene extends Phaser.Scene {
       }));
       return;
     }
-    showToast(this, notable?.message ?? "완료했습니다.", "success");
+    showToast(this, notable?.message ?? "완료했습니다.", notable?.type === "SAVE_FAILED" ? "error" : "success", notable?.type === "SAVE_FAILED" ? 1800 : 950);
     this.time.delayedCall(420, () => {
       this.scene.restart({
         recentEventType: notable?.type,
@@ -428,8 +432,8 @@ export class HomeScene extends Phaser.Scene {
     const state = getGameEngine().getState();
     const overlay = this.add.container(0, 0).setDepth(1950);
     const veil = this.add.rectangle(512, 288, 1024, 576, 0x12100e, 0.78).setInteractive();
-    const panel = this.add.rectangle(512, 286, 480, 330, 0xefe3c6, 1).setStrokeStyle(4, 0x8c633e, 1);
-    const title = this.add.text(512, 150, "편안하게 플레이하기", { color: "#4b3525", fontSize: "22px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif' }).setOrigin(0.5);
+    const panel = this.add.rectangle(512, 286, 480, 410, 0xefe3c6, 1).setStrokeStyle(4, 0x8c633e, 1);
+    const title = this.add.text(512, 105, "편안하게 플레이하기", { color: "#4b3525", fontSize: "22px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif' }).setOrigin(0.5);
     overlay.add([veil, panel, title]);
     const close = (): void => overlay.destroy(true);
     veil.on("pointerdown", close);
@@ -438,10 +442,14 @@ export class HomeScene extends Phaser.Scene {
       close();
       this.scene.restart();
     };
-    overlay.add(addButton(this, 512, 215, 340, 46, state.preferences.masterVolume > 0 ? "소리 켜짐 · 누르면 끄기" : "소리 꺼짐 · 누르면 켜기", () => apply(commands.updatePreferences({ masterVolume: state.preferences.masterVolume > 0 ? 0 : 0.7 })), { fill: 0x6d8063, fontSize: 13 }));
-    overlay.add(addButton(this, 512, 273, 340, 46, `간편 청소 ${state.preferences.simpleCleaning ? "켜짐" : "꺼짐"}`, () => apply(commands.updatePreferences({ simpleCleaning: !state.preferences.simpleCleaning })), { fill: 0x6d8063, fontSize: 13 }));
-    overlay.add(addButton(this, 512, 331, 340, 46, `모션 줄이기 ${state.preferences.reducedMotion ? "켜짐" : "꺼짐"}`, () => apply(commands.updatePreferences({ reducedMotion: !state.preferences.reducedMotion })), { fill: 0x6d8063, fontSize: 13 }));
-    overlay.add(addButton(this, 512, 390, 150, 36, "닫기", close, { fill: palette.warmDark, fontSize: 12 }));
+    overlay.add(addButton(this, 512, 165, 340, 44, state.preferences.masterVolume > 0 ? "소리 켜짐 · 누르면 끄기" : "소리 꺼짐 · 누르면 켜기", () => apply(commands.updatePreferences({ masterVolume: state.preferences.masterVolume > 0 ? 0 : 0.7 })), { fill: 0x6d8063, fontSize: 13 }));
+    overlay.add(addButton(this, 512, 219, 340, 44, `간편 청소 ${state.preferences.simpleCleaning ? "켜짐" : "꺼짐"}`, () => apply(commands.updatePreferences({ simpleCleaning: !state.preferences.simpleCleaning })), { fill: 0x6d8063, fontSize: 13 }));
+    overlay.add(addButton(this, 512, 273, 340, 44, `모션 줄이기 ${state.preferences.reducedMotion ? "켜짐" : "꺼짐"}`, () => apply(commands.updatePreferences({ reducedMotion: !state.preferences.reducedMotion })), { fill: 0x6d8063, fontSize: 13 }));
+    overlay.add(addButton(this, 512, 327, 340, 44, "배관일지 보관함 · 내보내기/불러오기", () => {
+      close();
+      openRecordManager(this);
+    }, { fill: 0x7b6548, fontSize: 13 }));
+    overlay.add(addButton(this, 512, 408, 150, 36, "닫기", close, { fill: palette.warmDark, fontSize: 12 }));
   }
 
   private startConstruction(anchor: HouseAnchorDefinition, building: BuildingDefinition, replacing: boolean): void {
@@ -631,7 +639,8 @@ export class HomeScene extends Phaser.Scene {
   }
 
   private notableEvent(events: GameEvent[]): GameEvent | undefined {
-    return events.find((event) => ["GAME_COMPLETED", "STEP_ONE_COMPLETED", "WORK_ENDED", "DAY_ENDED", "ZONE_UNLOCKED", "HOUSE_BUILT", "HOUSE_REMOVED", "ITEM_CRAFTED"].includes(event.type))
+    return events.find((event) => event.type === "SAVE_FAILED")
+      ?? events.find((event) => ["GAME_COMPLETED", "STEP_ONE_COMPLETED", "WORK_ENDED", "DAY_ENDED", "ZONE_UNLOCKED", "HOUSE_BUILT", "HOUSE_REMOVED", "ITEM_CRAFTED"].includes(event.type))
       ?? events[0];
   }
 
