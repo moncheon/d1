@@ -99,7 +99,7 @@ describe("browser game session bundles", () => {
     const legacyPrepared = session.prepareImportText(JSON.stringify(legacy));
     expect(legacyPrepared).toMatchObject({
       source: "legacy-state",
-      state: { saveVersion: 6, protagonistName: "", day: 7 },
+      state: { saveVersion: 7, protagonistName: "", introCompleted: true, day: 7 },
       preview: { historyCount: 0 },
     });
   });
@@ -174,5 +174,23 @@ describe("browser game session bundles", () => {
     expect(session.getSummary()).toMatchObject({ totalSessions: 2, historyCount: 3 });
     const record = JSON.parse(storage.getItem(BrowserPlayRecordRepository.RECORD_KEY) ?? "{}") as { history: Array<{ type: string }> };
     expect(record.history.map((entry) => entry.type)).toEqual(["NEW_GAME", "SESSION_STARTED", "SESSION_STARTED"]);
+  });
+
+  it("persists the opening story gate for a new game and exported record", () => {
+    const storage = new FakeStorage();
+    const session = new BrowserGameSession(storage, clock());
+    session.initialize(false);
+    session.startNewGame("보리");
+
+    expect(session.shouldShowIntro()).toBe(true);
+    session.completeIntro();
+    expect(session.shouldShowIntro()).toBe(false);
+    expect(JSON.parse(session.exportJson().json)).toMatchObject({
+      state: { protagonistName: "보리", introCompleted: true },
+    });
+
+    const reloaded = new BrowserGameSession(storage, clock());
+    reloaded.initialize(false);
+    expect(reloaded.shouldShowIntro()).toBe(false);
   });
 });

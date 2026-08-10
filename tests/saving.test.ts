@@ -30,7 +30,8 @@ describe("browser save repository", () => {
     repository.save(state);
 
     expect(repository.load()).toMatchObject({
-      saveVersion: 6,
+      saveVersion: 7,
+      introCompleted: false,
       day: 4,
       inventory: { leaf: 17 },
     });
@@ -64,7 +65,7 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     const loaded = new BrowserSaveRepository(storage).load();
-    expect(loaded).toMatchObject({ saveVersion: 6, protagonistName: "", day: 7, dayPhase: "working", inventory: { soil: 12 } });
+    expect(loaded).toMatchObject({ saveVersion: 7, protagonistName: "", introCompleted: true, day: 7, dayPhase: "working", inventory: { soil: 12 } });
     expect(loaded?.ownedAccessories).toEqual([]);
     expect(loaded?.preparedSolutions).toEqual({});
   });
@@ -77,7 +78,8 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     expect(new BrowserSaveRepository(storage).load()).toMatchObject({
-      saveVersion: 6,
+      saveVersion: 7,
+      introCompleted: true,
       currentActivity: 0,
       dayPhase: "evening",
     });
@@ -106,7 +108,8 @@ describe("browser save repository", () => {
 
     const loaded = new BrowserSaveRepository(storage).load();
     expect(loaded).toMatchObject({
-      saveVersion: 6,
+      saveVersion: 7,
+      introCompleted: true,
       memories: [],
       preferences: { masterVolume: 0.7, reducedMotion: false, simpleCleaning: false },
     });
@@ -148,7 +151,8 @@ describe("browser save repository", () => {
     const loaded = new BrowserSaveRepository(storage).load();
 
     expect(loaded).toMatchObject({
-      saveVersion: 6,
+      saveVersion: 7,
+      introCompleted: true,
       homeAnchors: {
         "rest-nook": "leaf_bed",
         "shell-left": "woven_wall",
@@ -165,7 +169,7 @@ describe("browser save repository", () => {
       homeCompletionCelebrated: true,
     });
     const persisted = JSON.parse(storage.getItem(BrowserSaveRepository.SAVE_KEY) ?? "{}") as Record<string, unknown>;
-    expect(persisted.saveVersion).toBe(6);
+    expect(persisted.saveVersion).toBe(7);
     expect(persisted.houseSlots).toBeUndefined();
   });
 
@@ -181,13 +185,32 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     expect(new BrowserSaveRepository(storage).load()).toMatchObject({
-      saveVersion: 6,
+      saveVersion: 7,
+      introCompleted: true,
       protagonistName: "",
       day: 11,
       homeAnchors: {
         "rest-nook": "leaf_bed",
         "shell-back": "shrub_wall",
       },
+    });
+  });
+
+  it("migrates a version six save without replaying the new opening story", () => {
+    const storage = new FakeStorage();
+    const legacy = createInitialGameState();
+    legacy.saveVersion = 6;
+    legacy.day = 14;
+    legacy.homeAnchors["rest-nook"] = "moss_nest";
+    const legacyShape = { ...legacy } as Record<string, unknown>;
+    delete legacyShape.introCompleted;
+    storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
+
+    expect(new BrowserSaveRepository(storage).load()).toMatchObject({
+      saveVersion: 7,
+      introCompleted: true,
+      day: 14,
+      homeAnchors: { "rest-nook": "moss_nest" },
     });
   });
 });

@@ -3,7 +3,7 @@ import { getGameSession } from "../core/sessionContext";
 import { getGameEngine } from "../core/gameContext";
 import { addButton, addQuokka, showToast } from "../ui/components";
 import { palette } from "../ui/palette";
-import { beginImportFlow, confirmRecordAction } from "../ui/recordManager";
+import { beginImportFlow, confirmRecordAction, startPlayableScene } from "../ui/recordManager";
 import { UI_FONT_FAMILY } from "../ui/typography";
 import {
   MAX_PROTAGONIST_NAME_LENGTH,
@@ -119,7 +119,7 @@ export class TitleScene extends Phaser.Scene {
     addButton(this, 766, 310, 380, 44, "JSON 기록 불러오기", () => {
       void beginImportFlow(
         this,
-        () => this.scene.start("HomeScene"),
+        () => startPlayableScene(this),
         (active) => this.setNameInputVisible(!active),
       );
     }, { fill: 0x536b61, fontSize: 13 });
@@ -160,7 +160,7 @@ export class TitleScene extends Phaser.Scene {
       const name = this.currentName();
       if (session.getHealth() === "valid") session.enterCurrent(name);
       else session.startNewGame(name);
-      this.scene.start("HomeScene");
+      startPlayableScene(this);
     } catch (error) {
       showToast(this, error instanceof Error ? error.message : "게임을 시작하지 못했어요.", "error", 1800);
     }
@@ -175,7 +175,7 @@ export class TitleScene extends Phaser.Scene {
       : "첫날의 허름한 덤불집에서 시작합니다.", "새로 시작", () => {
       try {
         session.startNewGame(this.currentName());
-        this.scene.start("HomeScene");
+        startPlayableScene(this);
       } catch (error) {
         this.setNameInputVisible(true);
         showToast(this, error instanceof Error ? error.message : "새 게임을 만들지 못했어요.", "error", 1800);
@@ -218,7 +218,7 @@ export class TitleScene extends Phaser.Scene {
       : "복원할 이전 기록을 찾지 못했어요.", "복원하기", () => {
       try {
         session.restoreBackup();
-        this.scene.start("HomeScene");
+        startPlayableScene(this);
       } catch (error) {
         this.setNameInputVisible(true);
         showToast(this, error instanceof Error ? error.message : "복원하지 못했어요.", "error", 1600);

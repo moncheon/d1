@@ -127,6 +127,24 @@ export class BrowserGameSession {
     this.tryRecord(() => this.records.startSession(this.requireEngine().getState()));
   }
 
+  public shouldShowIntro(): boolean {
+    return !this.requireEngine().getState().introCompleted;
+  }
+
+  public completeIntro(): void {
+    const current = this.requireEngine().snapshot();
+    if (current.introCompleted) return;
+    current.introCompleted = true;
+    try {
+      this.saves.save(current);
+      this.health = "valid";
+    } catch (error) {
+      throw new Error("시작 이야기를 완료한 기록을 저장하지 못했어요. 다시 눌러 주세요.", { cause: error });
+    }
+    this.activate(current);
+    this.tryRecord(() => this.records.noteSaved());
+  }
+
   public startNewGame(protagonistName = ""): void {
     const state = createInitialGameState(protagonistName);
     this.replaceCurrent(state, createEmptyPlayRecord(this.clock()), this.currentBundle());

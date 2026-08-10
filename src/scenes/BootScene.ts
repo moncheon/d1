@@ -25,6 +25,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image("home-shell-base", "assets/visuals/home-shell-base.png");
     this.load.image("home-dome-back", "assets/visuals/home-dome-back.png");
     this.load.image("home-items-new", "assets/visuals/home-items-new.png");
+    this.load.image("intro-story-1", "assets/story/intro-01.webp");
+    this.load.image("intro-story-2", "assets/story/intro-02.webp");
+    this.load.image("intro-story-3", "assets/story/intro-03.webp");
   }
 
   public create(): void {
@@ -100,7 +103,10 @@ export class BootScene extends Phaser.Scene {
     if (hasQaRoute) session.activateQaState(state);
     const scene = qa?.get("scene");
     if (!hasQaRoute) {
-      this.scene.start("TitleScene");
+      this.scene.start(session.getHealth() === "valid" && session.shouldShowIntro() ? "StoryScene" : "TitleScene");
+    } else if (scene === "story") {
+      const requestedEpisode = Number.parseInt(qa?.get("episode") ?? "1", 10);
+      this.scene.start("StoryScene", { episode: Phaser.Math.Clamp(requestedEpisode - 1, 0, 2) });
     } else if (scene === "map") {
       this.scene.start("PipeMapScene", { focusZoneId: qa?.get("zone") ?? "curved-drain" });
     } else if (scene === "workplace") {

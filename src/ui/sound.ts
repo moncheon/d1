@@ -1,21 +1,11 @@
 import * as Phaser from "phaser";
+import { getAudioContext } from "./audioContext";
 
 export type SoundCue = "tap" | "clean" | "build" | "memory" | "unlock" | "sleep";
 
-let context: AudioContext | undefined;
-
-function getContext(): AudioContext | undefined {
-  if (typeof window === "undefined") return undefined;
-  const AudioContextClass = window.AudioContext;
-  if (!AudioContextClass) return undefined;
-  context ??= new AudioContextClass();
-  if (context.state === "suspended") void context.resume();
-  return context;
-}
-
 export function playSoundCue(cue: SoundCue, masterVolume: number): void {
   if (masterVolume <= 0) return;
-  const audio = getContext();
+  const audio = getAudioContext();
   if (!audio) return;
   const frequencies: Record<SoundCue, [number, number]> = {
     tap: [330, 390],

@@ -7,6 +7,7 @@ import { WorkplaceScene } from "./scenes/workplace/WorkplaceScene";
 import { PipeMapScene } from "./scenes/workplace/PipeMapScene";
 import { ResultScene } from "./scenes/ResultScene";
 import { TitleScene } from "./scenes/TitleScene";
+import { StoryScene } from "./scenes/StoryScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -19,7 +20,7 @@ const config: Phaser.Types.Core.GameConfig = {
   dom: {
     createContainer: true,
   },
-  scene: [BootScene, TitleScene, HomeScene, WorkshopScene, PipeMapScene, WorkplaceScene, ResultScene],
+  scene: [BootScene, TitleScene, StoryScene, HomeScene, WorkshopScene, PipeMapScene, WorkplaceScene, ResultScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

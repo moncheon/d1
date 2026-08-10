@@ -3,7 +3,7 @@ import buildingsJson from "../data/buildings.json";
 import type { BuildingCategory, BuildingDefinition, CleanTechnique, HouseAnchorDefinition, LiquidId, ZoneDefinition } from "../entities/types";
 import { normalizeProtagonistName } from "./protagonistName";
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export type DayPhase = "working" | "evening";
 
@@ -49,6 +49,7 @@ export interface CleaningStat {
 export interface GameState {
   saveVersion: number;
   protagonistName: string;
+  introCompleted: boolean;
   day: number;
   dayPhase: DayPhase;
   currentActivity: number;
@@ -78,6 +79,7 @@ export function createInitialGameState(protagonistName = ""): GameState {
   return {
     saveVersion: SAVE_VERSION,
     protagonistName: normalizeProtagonistName(protagonistName),
+    introCompleted: false,
     day: 1,
     dayPhase: "working",
     currentActivity: 5,
@@ -177,7 +179,7 @@ export function mergeWithInitialState(candidate: unknown): GameState | null {
   }
 
   const saved = candidate as LegacySave;
-  if (![1, 2, 3, 4, 5, SAVE_VERSION].includes(saved.saveVersion ?? -1)) {
+  if (![1, 2, 3, 4, 5, 6, SAVE_VERSION].includes(saved.saveVersion ?? -1)) {
     return null;
   }
 
@@ -191,6 +193,7 @@ export function mergeWithInitialState(candidate: unknown): GameState | null {
     ...saved,
     saveVersion: SAVE_VERSION,
     protagonistName: normalizeProtagonistName(saved.protagonistName),
+    introCompleted: saved.saveVersion === SAVE_VERSION ? Boolean(saved.introCompleted) : true,
     dayPhase: saved.dayPhase === "evening" || saved.currentActivity === 0 ? "evening" : "working",
     gameCompleted: (saved.saveVersion ?? 0) >= 3 ? Boolean(saved.gameCompleted) : false,
     inventory,

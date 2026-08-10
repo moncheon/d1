@@ -24,6 +24,10 @@ function previewText(preview: RecordPreview): string {
   return `${preview.day}일 차 · 행복도 ${preview.happiness}\n덤불집 ${preview.homePercent}% · 주요 이력 ${preview.historyCount}개\n내보낸 때 ${dateLabel(preview.exportedAt)}`;
 }
 
+export function startPlayableScene(scene: Phaser.Scene): void {
+  scene.scene.start(getGameSession().shouldShowIntro() ? "StoryScene" : "HomeScene");
+}
+
 export function confirmRecordAction(
   scene: Phaser.Scene,
   title: string,
@@ -127,7 +131,7 @@ export function openRecordManager(scene: Phaser.Scene): void {
     }
   }, { fill: 0x6d8063, fontSize: 13 }));
   overlay.add(addButton(scene, 512, 278, 390, 46, "JSON 기록 불러오기", () => {
-    void beginImportFlow(scene, () => scene.scene.start("HomeScene"));
+    void beginImportFlow(scene, () => startPlayableScene(scene));
   }, { fill: 0x6d8063, fontSize: 13 }));
 
   if (session.hasBackup()) {
@@ -136,7 +140,7 @@ export function openRecordManager(scene: Phaser.Scene): void {
       confirmRecordAction(scene, "이전 기록으로 돌아갈까요?", backup ? `${previewText(backup)}\n\n현재 기록과 서로 바뀌어 다시 되돌릴 수 있습니다.` : "이전 기록을 복원합니다.", "복원하기", () => {
         try {
           session.restoreBackup();
-          scene.scene.start("HomeScene");
+          startPlayableScene(scene);
         } catch (error) {
           showToast(scene, error instanceof Error ? error.message : "복원하지 못했어요.", "error", 1600);
         }
