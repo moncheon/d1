@@ -15,7 +15,7 @@
 
 ## 개발 실행
 
-요구 환경: Node.js 22.12 이상, pnpm 11 이상
+요구 환경: Node.js 22.13 이상, pnpm 11 이상
 
 ```powershell
 pnpm install
