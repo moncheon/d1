@@ -82,11 +82,16 @@ describe("browser game session bundles", () => {
   it("round-trips a bundle and migrates a raw legacy state", () => {
     const session = new BrowserGameSession(new FakeStorage(), clock());
     session.initialize(false);
-    session.startNewGame();
+    session.startNewGame("몽이");
+    session.enterCurrent(" 복순 ");
 
     const exported = session.exportJson();
     const prepared = session.prepareImportText(exported.json);
-    expect(prepared).toMatchObject({ source: "bundle", preview: { day: 1 } });
+    expect(prepared).toMatchObject({
+      source: "bundle",
+      state: { protagonistName: "복순" },
+      preview: { day: 1 },
+    });
 
     const legacy = createInitialGameState();
     legacy.saveVersion = 3;
@@ -94,7 +99,7 @@ describe("browser game session bundles", () => {
     const legacyPrepared = session.prepareImportText(JSON.stringify(legacy));
     expect(legacyPrepared).toMatchObject({
       source: "legacy-state",
-      state: { saveVersion: 5, day: 7 },
+      state: { saveVersion: 6, protagonistName: "", day: 7 },
       preview: { historyCount: 0 },
     });
   });

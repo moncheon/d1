@@ -1,8 +1,9 @@
 import mapsJson from "../data/maps.json";
 import buildingsJson from "../data/buildings.json";
 import type { BuildingCategory, BuildingDefinition, CleanTechnique, HouseAnchorDefinition, LiquidId, ZoneDefinition } from "../entities/types";
+import { normalizeProtagonistName } from "./protagonistName";
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export type DayPhase = "working" | "evening";
 
@@ -47,6 +48,7 @@ export interface CleaningStat {
 
 export interface GameState {
   saveVersion: number;
+  protagonistName: string;
   day: number;
   dayPhase: DayPhase;
   currentActivity: number;
@@ -72,9 +74,10 @@ export interface GameState {
   preferences: GamePreferences;
 }
 
-export function createInitialGameState(): GameState {
+export function createInitialGameState(protagonistName = ""): GameState {
   return {
     saveVersion: SAVE_VERSION,
+    protagonistName: normalizeProtagonistName(protagonistName),
     day: 1,
     dayPhase: "working",
     currentActivity: 5,
@@ -174,19 +177,20 @@ export function mergeWithInitialState(candidate: unknown): GameState | null {
   }
 
   const saved = candidate as LegacySave;
-  if (![1, 2, 3, 4, SAVE_VERSION].includes(saved.saveVersion ?? -1)) {
+  if (![1, 2, 3, 4, 5, SAVE_VERSION].includes(saved.saveVersion ?? -1)) {
     return null;
   }
 
   const initial = createInitialGameState();
   const inventory = { ...initial.inventory, ...(saved.inventory ?? {}) };
-  const homeAnchors = saved.saveVersion === SAVE_VERSION
+  const homeAnchors = (saved.saveVersion ?? 0) >= 5
     ? { ...initial.homeAnchors, ...(saved.homeAnchors ?? {}) }
     : migrateLegacyHome(saved.houseSlots ?? {}, inventory);
   const merged: GameState = {
     ...initial,
     ...saved,
     saveVersion: SAVE_VERSION,
+    protagonistName: normalizeProtagonistName(saved.protagonistName),
     dayPhase: saved.dayPhase === "evening" || saved.currentActivity === 0 ? "evening" : "working",
     gameCompleted: (saved.saveVersion ?? 0) >= 3 ? Boolean(saved.gameCompleted) : false,
     inventory,

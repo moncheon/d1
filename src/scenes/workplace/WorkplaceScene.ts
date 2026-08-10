@@ -15,6 +15,7 @@ import { addButton, addQuokka, addTitle, setQuokkaPose, showToast } from "../../
 import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 import { bindAmbient, playSoundCue } from "../../ui/sound";
+import { nameWithParticle } from "../../core/protagonistName";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
@@ -492,7 +493,8 @@ export class WorkplaceScene extends Phaser.Scene {
         if (elapsed > 4500) {
           assisted = true;
           progress += 0.018;
-          note.setText("쿼카가 옆에서 살짝 도와주고 있어요");
+          const subject = nameWithParticle(getGameEngine().getState().protagonistName, "subject");
+          note.setText(subject ? `${subject} 옆에서 살짝 도와주고 있어요` : "옆에서 살짝 도와주고 있어요");
         }
         updateBar();
       },

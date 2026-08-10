@@ -2,6 +2,7 @@ import { CompositeAnalytics, ConsoleAnalytics, type AnalyticsSink } from "../ana
 import { setGameEngine } from "../core/gameContext";
 import { GameEngine } from "../core/gameEngine";
 import { createInitialGameState, mergeWithInitialState, type GameState } from "../core/gameState";
+import { normalizeProtagonistName } from "../core/protagonistName";
 import {
   BrowserPlayRecordRepository,
   LocalHistoryAnalytics,
@@ -100,13 +101,14 @@ export class BrowserGameSession {
     return this.health;
   }
 
-  public getSummary(): RecordPreview & { lastSavedAt: string; totalSessions: number } {
+  public getSummary(): RecordPreview & { lastSavedAt: string; totalSessions: number; protagonistName: string } {
     const state = this.requireEngine().getState();
     const record = this.records.load();
     return {
       ...previewFor(state, record, null),
       lastSavedAt: record.metadata.lastSavedAt,
       totalSessions: record.metadata.totalSessions,
+      protagonistName: state.protagonistName,
     };
   }
 
@@ -116,19 +118,34 @@ export class BrowserGameSession {
     return notice;
   }
 
-  public enterCurrent(): void {
+  public enterCurrent(protagonistName?: string): void {
     if (this.health !== "valid") {
-      this.startNewGame();
+      this.startNewGame(protagonistName);
       return;
     }
+    if (protagonistName !== undefined) this.updateCurrentName(protagonistName);
     this.tryRecord(() => this.records.startSession(this.requireEngine().getState()));
   }
 
-  public startNewGame(): void {
-    const state = createInitialGameState();
+  public startNewGame(protagonistName = ""): void {
+    const state = createInitialGameState(protagonistName);
     this.replaceCurrent(state, createEmptyPlayRecord(this.clock()), this.currentBundle());
     this.tryRecord(() => this.records.appendSystem("NEW_GAME", "새 배관일지를 펼쳤습니다.", state));
     this.tryRecord(() => this.records.startSession(state));
+  }
+
+  private updateCurrentName(protagonistName: string): void {
+    const normalized = normalizeProtagonistName(protagonistName);
+    const current = this.requireEngine().snapshot();
+    if (current.protagonistName === normalized) return;
+    current.protagonistName = normalized;
+    try {
+      this.saves.save(current);
+    } catch (error) {
+      throw new Error("이름을 브라우저에 저장하지 못했어요. 현재 기록은 그대로 유지했습니다.", { cause: error });
+    }
+    this.activate(current);
+    this.tryRecord(() => this.records.noteSaved());
   }
 
   public hasBackup(): boolean {

@@ -43,6 +43,29 @@ body {
   display: block;
 }
 
+.protagonist-name-input {
+  width: 360px;
+  height: 40px;
+  border: 2px solid #b99561;
+  border-radius: 10px;
+  outline: none;
+  background: rgb(23 36 31 / 94%);
+  color: #f7e9c8;
+  font: 600 15px/1 "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  text-align: center;
+  box-shadow: 0 5px 18px rgb(0 0 0 / 24%);
+}
+
+.protagonist-name-input::placeholder {
+  color: #91a69b;
+  font-weight: 400;
+}
+
+.protagonist-name-input:focus {
+  border-color: #f0d27e;
+  box-shadow: 0 0 0 3px rgb(240 210 126 / 18%);
+}
+
 .controls {
   margin: 0;
   color: #acbeb9;

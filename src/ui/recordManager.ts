@@ -62,7 +62,11 @@ export function confirmRecordAction(
   }, { fill: palette.warmDark, fontSize: 13 }));
 }
 
-export async function beginImportFlow(scene: Phaser.Scene, onApplied: () => void): Promise<void> {
+export async function beginImportFlow(
+  scene: Phaser.Scene,
+  onApplied: () => void,
+  onPromptState?: (active: boolean) => void,
+): Promise<void> {
   const session = getGameSession();
   let prepared: PreparedImport | null;
   try {
@@ -72,12 +76,14 @@ export async function beginImportFlow(scene: Phaser.Scene, onApplied: () => void
     return;
   }
   if (!prepared) return;
+  onPromptState?.(true);
   confirmRecordAction(
     scene,
     "이 기록으로 이어 걸을까요?",
     `${previewText(prepared.preview)}\n\n현재 기록은 이전 기록으로 한 번 보관됩니다.`,
     "불러오기",
     () => {
+      onPromptState?.(false);
       try {
         session.applyImport(prepared);
         onApplied();
@@ -85,6 +91,7 @@ export async function beginImportFlow(scene: Phaser.Scene, onApplied: () => void
         showToast(scene, error instanceof Error ? error.message : "기록을 불러오지 못했어요.", "error", 1800);
       }
     },
+    () => onPromptState?.(false),
   );
 }
 

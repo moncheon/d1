@@ -16,6 +16,9 @@ const config: Phaser.Types.Core.GameConfig = {
   backgroundColor: "#243238",
   pixelArt: false,
   antialias: true,
+  dom: {
+    createContainer: true,
+  },
   scene: [BootScene, TitleScene, HomeScene, WorkshopScene, PipeMapScene, WorkplaceScene, ResultScene],
   scale: {
     mode: Phaser.Scale.FIT,

@@ -5,6 +5,6 @@
   { "id": "organic-route", "title": "물길과 뿌리 냄새", "text": "굽은 배수로에서 물이 다시 흐를 자리를 함께 찾았다.", "pose": 10 },
   { "id": "mineral-route", "title": "잠든 밸브의 소리", "text": "막힌 연결관에서 점토와 금속이 울리는 소리를 들었다.", "pose": 10 },
   { "id": "first-bed-sleep", "title": "집에서 보낸 첫밤", "text": "직접 만든 잠자리에서 처음으로 몸을 둥글게 말고 잠들었다.", "pose": 8 },
-  { "id": "home-complete", "title": "우리 냄새가 나는 집", "text": "빈 집터가 쿼카의 습관과 이야기가 머무는 집이 되었다.", "pose": 9 },
+  { "id": "home-complete", "title": "우리 냄새가 나는 집", "text": "빈 집터가 내 습관과 이야기가 머무는 집이 되었다.", "pose": 9 },
   { "id": "step-one", "title": "따뜻한 집, 깨끗한 배관", "text": "차갑던 배관과 황량한 집터를 함께 삶의 터전으로 바꾸었다.", "pose": 9 }
 ]

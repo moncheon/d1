@@ -25,6 +25,8 @@ import { palette } from "../../ui/palette";
 import { memoryDefinitions } from "../../systems/memories";
 import { bindAmbient, playSoundCue } from "../../ui/sound";
 import { openRecordManager } from "../../ui/recordManager";
+import { nameWithParticle, personalizedTitle } from "../../core/protagonistName";
+import { homeFeelingText } from "../../ui/homeCopy";
 
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
@@ -116,18 +118,21 @@ export class HomeScene extends Phaser.Scene {
 
   private drawHeader(): void {
     const state = getGameEngine().getState();
-    addTitle(this, 80, 16, "쿼카의 덤불집", 24);
+    const titleSize = Array.from(state.protagonistName).length > 6 ? 18 : 24;
+    addTitle(this, 80, 16, personalizedTitle(state.protagonistName, "덤불집"), titleSize);
     this.add.text(82, 49, `${state.day}일 차 · 활동력 ${state.currentActivity}/${state.maxActivity}`, {
       color: "#c8d9d3",
       fontSize: "14px",
       fontFamily: '"Malgun Gothic", sans-serif',
     });
-    this.add.text(408, 31, `포근함 ${state.happiness} · 내일 ${activityForHappiness(state.happiness)}회`, {
+    this.add.text(526, 14, `포근함 ${state.happiness}\n내일 ${activityForHappiness(state.happiness)}회`, {
       color: "#f0d69d",
-      fontSize: "14px",
+      fontSize: "12px",
       fontStyle: "bold",
       fontFamily: '"Malgun Gothic", sans-serif',
-    });
+      align: "right",
+      lineSpacing: 1,
+    }).setOrigin(1, 0);
     const evening = state.dayPhase === "evening";
     addButton(this, 588, 45, 96, 42, this.decorateMode ? "생활 보기" : "꾸미기", () => {
       this.scene.restart({ decorateMode: !this.decorateMode });
@@ -136,7 +141,7 @@ export class HomeScene extends Phaser.Scene {
       fill: 0x6f5b3c, fontSize: 12,
     });
     addButton(this, 766, 45, 42, 42, "⚙", () => this.openPreferences(), { fill: 0x40565a, fontSize: 16 });
-    addButton(this, 902, 45, 188, 52, evening ? "오늘 일은 다 했어" : "배관 지도로 출근  →", () => {
+    addButton(this, 902, 45, 188, 52, evening ? "오늘 일은 다 했어" : "주변을 정리하러 가자  →", () => {
       this.scene.start("PipeMapScene");
     }, { fill: palette.warmDark, hoverFill: palette.warm, fontSize: 15, disabled: evening });
   }
@@ -178,7 +183,7 @@ export class HomeScene extends Phaser.Scene {
 
   private drawShelter(): void {
     const state = getGameEngine().getState();
-    this.add.text(230, 108, this.decorateMode ? "꾸밀 곳을 골라 주세요" : "가운데에서 함께 살아가는 덤불집", {
+    this.add.text(230, 108, this.decorateMode ? "꾸밀 곳을 골라 주세요" : homeFeelingText(state.happiness), {
       color: "#fff0ca", fontSize: "17px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     }).setShadow(0, 2, "#3b2819", 4);
     this.add.ellipse(510, 409, 344, 112, 0x392516, 0.42).setDepth(24);
@@ -227,7 +232,7 @@ export class HomeScene extends Phaser.Scene {
 
     this.add.text(244, 500, this.decorateMode
       ? "빛나는 자리를 누르면 세 가지 재료 모습을 비교할 수 있어요."
-      : `집의 포근함 ${state.happiness} · 가운데 생활과 반구 외피가 함께 자라요.`, {
+      : "모아 온 재료로 우리 덤불집을 아기자기하게 꾸며 봐요!", {
       color: "#ffe6ad",
       fontSize: "12px",
       fontFamily: '"Malgun Gothic", sans-serif',
@@ -407,7 +412,8 @@ export class HomeScene extends Phaser.Scene {
     const latest = [...state.memories].reverse().slice(0, 4);
     const latestDefinition = memoryDefinitions.find((definition) => definition.id === latest[0]?.id);
     setQuokkaPose(portrait, latestDefinition?.pose ?? 10);
-    const title = this.add.text(330, 90, "쿼카와 함께 쌓은 추억", {
+    const companion = nameWithParticle(state.protagonistName, "with");
+    const title = this.add.text(330, 90, companion ? `${companion} 함께 쌓은 추억` : "함께 쌓은 추억", {
       color: "#503a28", fontSize: "24px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
     });
     const empty = this.add.text(330, 135, latest.length === 0 ? "아직 첫 장이 비어 있어. 배관에서 작은 일을 함께 시작해 보자." : `지금까지 ${state.memories.length}개의 장면을 기억하고 있어.`, {

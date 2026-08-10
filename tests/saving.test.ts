@@ -30,7 +30,7 @@ describe("browser save repository", () => {
     repository.save(state);
 
     expect(repository.load()).toMatchObject({
-      saveVersion: 5,
+      saveVersion: 6,
       day: 4,
       inventory: { leaf: 17 },
     });
@@ -64,7 +64,7 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     const loaded = new BrowserSaveRepository(storage).load();
-    expect(loaded).toMatchObject({ saveVersion: 5, day: 7, dayPhase: "working", inventory: { soil: 12 } });
+    expect(loaded).toMatchObject({ saveVersion: 6, protagonistName: "", day: 7, dayPhase: "working", inventory: { soil: 12 } });
     expect(loaded?.ownedAccessories).toEqual([]);
     expect(loaded?.preparedSolutions).toEqual({});
   });
@@ -77,7 +77,7 @@ describe("browser save repository", () => {
     storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
 
     expect(new BrowserSaveRepository(storage).load()).toMatchObject({
-      saveVersion: 5,
+      saveVersion: 6,
       currentActivity: 0,
       dayPhase: "evening",
     });
@@ -106,7 +106,7 @@ describe("browser save repository", () => {
 
     const loaded = new BrowserSaveRepository(storage).load();
     expect(loaded).toMatchObject({
-      saveVersion: 5,
+      saveVersion: 6,
       memories: [],
       preferences: { masterVolume: 0.7, reducedMotion: false, simpleCleaning: false },
     });
@@ -148,7 +148,7 @@ describe("browser save repository", () => {
     const loaded = new BrowserSaveRepository(storage).load();
 
     expect(loaded).toMatchObject({
-      saveVersion: 5,
+      saveVersion: 6,
       homeAnchors: {
         "rest-nook": "leaf_bed",
         "shell-left": "woven_wall",
@@ -165,7 +165,29 @@ describe("browser save repository", () => {
       homeCompletionCelebrated: true,
     });
     const persisted = JSON.parse(storage.getItem(BrowserSaveRepository.SAVE_KEY) ?? "{}") as Record<string, unknown>;
-    expect(persisted.saveVersion).toBe(5);
+    expect(persisted.saveVersion).toBe(6);
     expect(persisted.houseSlots).toBeUndefined();
+  });
+
+  it("migrates a version five save without losing its nine-anchor home", () => {
+    const storage = new FakeStorage();
+    const legacy = createInitialGameState();
+    legacy.saveVersion = 5;
+    legacy.day = 11;
+    legacy.homeAnchors["rest-nook"] = "leaf_bed";
+    legacy.homeAnchors["shell-back"] = "shrub_wall";
+    const legacyShape = { ...legacy } as Record<string, unknown>;
+    delete legacyShape.protagonistName;
+    storage.setItem(BrowserSaveRepository.SAVE_KEY, JSON.stringify(legacyShape));
+
+    expect(new BrowserSaveRepository(storage).load()).toMatchObject({
+      saveVersion: 6,
+      protagonistName: "",
+      day: 11,
+      homeAnchors: {
+        "rest-nook": "leaf_bed",
+        "shell-back": "shrub_wall",
+      },
+    });
   });
 });

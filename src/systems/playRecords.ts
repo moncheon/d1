@@ -191,7 +191,7 @@ export class BrowserPlayRecordRepository {
   public startSession(state: Readonly<GameState>): void {
     const record = this.load();
     record.metadata.totalSessions += 1;
-    this.appendTo(record, "SESSION_STARTED", "쿼카의 덤불집으로 돌아왔습니다.", state, {});
+    this.appendTo(record, "SESSION_STARTED", "덤불집으로 돌아왔습니다.", state, {});
     this.replace(record);
   }
 

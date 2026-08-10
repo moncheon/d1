@@ -17,6 +17,7 @@ import { addButton, addPanel, addQuokka, addTitle, setQuokkaPose, showToast } fr
 import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 import { bindAmbient } from "../../ui/sound";
+import { personalizedTitle } from "../../core/protagonistName";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const items = itemsJson as unknown as ItemDefinition[];
@@ -75,8 +76,9 @@ export class WorkshopScene extends Phaser.Scene {
     this.add.image(512, 288, "home-diorama").setDisplaySize(1024, 576).setTint(0x8ca37b);
     this.add.rectangle(512, 330, 1024, 492, 0x142328, 0.52);
     this.add.rectangle(512, 42, 1024, 84, palette.ink, 0.94);
-    addTitle(this, 24, 15, "쿼카의 장비 작업실", 24);
     const state = getGameEngine().getState();
+    const titleSize = Array.from(state.protagonistName).length > 8 ? 18 : 24;
+    addTitle(this, 24, 15, personalizedTitle(state.protagonistName, "장비 작업실"), titleSize);
     this.add.text(25, 51, `${state.day}일 차 · 활동력 ${state.currentActivity}/${state.maxActivity}`, {
       color: "#c6ded7", fontSize: "14px", fontFamily: '"Malgun Gothic", sans-serif',
     });
