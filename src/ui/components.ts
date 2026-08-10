@@ -12,6 +12,7 @@ export interface ButtonOptions {
   disabled?: boolean;
   align?: "center" | "left";
   highlighted?: boolean;
+  playSound?: boolean;
 }
 
 export function addPanel(
@@ -67,7 +68,7 @@ export function addButton(
     background.on("pointerover", () => background.setFillStyle(hoverFill));
     background.on("pointerout", () => background.setFillStyle(fill));
     background.on("pointerdown", () => {
-      playSoundCue("tap", getGameEngine().getState().preferences.masterVolume);
+      if (options.playSound !== false) playSoundCue("tap", getGameEngine().getState().preferences.masterVolume);
       background.setScale(0.97);
       scene.time.delayedCall(70, () => background.setScale(1));
       onClick();

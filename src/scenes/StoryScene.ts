@@ -4,7 +4,7 @@ import { getGameSession } from "../core/sessionContext";
 import { introStory } from "../data/introStory";
 import { addButton, showToast } from "../ui/components";
 import { palette } from "../ui/palette";
-import { createStoryAudio, type StoryAudioController } from "../ui/storySound";
+import { createStoryMusic, type StoryMusicController } from "../ui/storyMusic";
 import { UI_FONT_FAMILY } from "../ui/typography";
 
 interface StorySceneData {
@@ -18,7 +18,7 @@ export class StoryScene extends Phaser.Scene {
   private caption?: Phaser.GameObjects.Text;
   private progress?: Phaser.GameObjects.Text;
   private hint?: Phaser.GameObjects.Text;
-  private audio?: StoryAudioController;
+  private music?: StoryMusicController;
   private transitioning = false;
   private inputReadyAt = 0;
 
@@ -73,11 +73,12 @@ export class StoryScene extends Phaser.Scene {
       hoverFill: 0x6d8063,
       border: 0xb99561,
       fontSize: 12,
+      playSound: false,
     }).setDepth(20);
 
     this.renderEpisode();
-    this.audio = createStoryAudio(state.preferences.masterVolume);
-    this.audio.setEpisode(this.episodeIndex);
+    this.music = createStoryMusic(this, state.preferences.masterVolume);
+    this.music.setEpisode(this.episodeIndex);
     this.inputReadyAt = this.time.now + 300;
     this.input.on("pointerdown", this.handlePointerDown, this);
     this.input.keyboard?.on("keydown-ENTER", this.handleAdvanceKey, this);
@@ -95,14 +96,14 @@ export class StoryScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
-    this.audio?.resume();
+    this.music?.resume();
     if (pointer.x >= 825 && pointer.y <= 72) return;
     this.advance();
   }
 
   private handleAdvanceKey(event: KeyboardEvent): void {
     event.preventDefault();
-    this.audio?.resume();
+    this.music?.resume();
     this.advance();
   }
 
@@ -117,7 +118,7 @@ export class StoryScene extends Phaser.Scene {
     if (reducedMotion) {
       this.episodeIndex += 1;
       this.renderEpisode();
-      this.audio?.setEpisode(this.episodeIndex);
+      this.music?.setEpisode(this.episodeIndex);
       this.unlockInput();
       return;
     }
@@ -129,7 +130,7 @@ export class StoryScene extends Phaser.Scene {
       onComplete: () => {
         this.episodeIndex += 1;
         this.renderEpisode();
-        this.audio?.setEpisode(this.episodeIndex);
+        this.music?.setEpisode(this.episodeIndex);
         this.tweens.add({ targets, alpha: 1, duration: 125, onComplete: () => this.unlockInput() });
       },
     });
@@ -143,10 +144,10 @@ export class StoryScene extends Phaser.Scene {
   private finishStory(): void {
     if (this.transitioning) return;
     this.transitioning = true;
-    this.audio?.resume();
+    this.music?.resume();
     try {
       getGameSession().completeIntro();
-      this.audio?.stop();
+      this.music?.stop();
       this.scene.start("HomeScene");
     } catch (error) {
       this.transitioning = false;
@@ -155,8 +156,8 @@ export class StoryScene extends Phaser.Scene {
   }
 
   private shutdown(): void {
-    this.audio?.stop();
-    this.audio = undefined;
+    this.music?.stop();
+    this.music = undefined;
     this.input.off("pointerdown", this.handlePointerDown, this);
     this.input.keyboard?.off("keydown-ENTER", this.handleAdvanceKey, this);
     this.input.keyboard?.off("keydown-SPACE", this.handleAdvanceKey, this);

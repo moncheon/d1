@@ -28,6 +28,9 @@ export class BootScene extends Phaser.Scene {
     this.load.image("intro-story-1", "assets/story/intro-01.webp");
     this.load.image("intro-story-2", "assets/story/intro-02.webp");
     this.load.image("intro-story-3", "assets/story/intro-03.webp");
+    this.load.audio("intro-music-1", ["assets/audio/story/story-01.ogg", "assets/audio/story/story-01.mp3"]);
+    this.load.audio("intro-music-2", ["assets/audio/story/story-02.ogg", "assets/audio/story/story-02.mp3"]);
+    this.load.audio("intro-music-3", ["assets/audio/story/story-03.ogg", "assets/audio/story/story-03.mp3"]);
   }
 
   public create(): void {
