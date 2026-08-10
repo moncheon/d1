@@ -6,3 +6,9 @@ tmp/
 output/imagegen/
 output/playwright/*.log
 *.local
+
+# Local NAN submission bundle and recordings (may contain private capture data)
+report/output/video/
+report/output/최종제출/
+report/*.mp4
+report/thumbnail.png
