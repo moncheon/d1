@@ -13,66 +13,7 @@ export class BootScene extends Phaser.Scene {
     super("BootScene");
   }
 
-  public preload(): void {
-    this.load.image("home-diorama", "assets/visuals/home-diorama.png");
-    this.load.image("pipe-organic", "assets/visuals/pipe-organic.png");
-    this.load.image("pipe-mineral", "assets/visuals/pipe-mineral.png");
-    this.load.spritesheet("quokka-poses", "assets/visuals/quokka-poses.png", {
-      frameWidth: 362,
-      frameHeight: 362,
-    });
-    this.load.image("house-objects", "assets/visuals/house-objects.png");
-    this.load.image("home-shell-base", "assets/visuals/home-shell-base.png");
-    this.load.image("home-dome-back", "assets/visuals/home-dome-back.png");
-    this.load.image("home-items-new", "assets/visuals/home-items-new.png");
-    this.load.image("intro-story-1", "assets/story/intro-01.webp");
-    this.load.image("intro-story-2", "assets/story/intro-02.webp");
-    this.load.image("intro-story-3", "assets/story/intro-03.webp");
-    this.load.audio("intro-music-1", ["assets/audio/story/story-01.ogg", "assets/audio/story/story-01.mp3"]);
-    this.load.audio("intro-music-2", ["assets/audio/story/story-02.ogg", "assets/audio/story/story-02.mp3"]);
-    this.load.audio("intro-music-3", ["assets/audio/story/story-03.ogg", "assets/audio/story/story-03.mp3"]);
-  }
-
   public create(): void {
-    const houseTexture = this.textures.get("house-objects");
-    const buildingFrames = [
-      "leaf_bed", "shrub_wall", "leaf_roof", "dirt_path",
-      "flower_bed", "moss_decor", "moss_nest", "woven_wall",
-      "flower_canopy", "clay_steps", "sprout_bed", "resin_chime",
-    ];
-    const xEdges = [0, 314, 627, 941, 1254];
-    const yEdges = [0, 418, 836, 1254];
-    buildingFrames.forEach((buildingId, index) => {
-      const column = index % 4;
-      const row = Math.floor(index / 4);
-      houseTexture.add(
-        buildingId,
-        0,
-        xEdges[column] ?? 0,
-        yEdges[row] ?? 0,
-        (xEdges[column + 1] ?? 1254) - (xEdges[column] ?? 0),
-        (yEdges[row + 1] ?? 1254) - (yEdges[row] ?? 0),
-      );
-    });
-    const newHouseTexture = this.textures.get("home-items-new");
-    const newBuildingFrames = [
-      "woven_hammock", "clay_root_wall", "fiber_canopy",
-      "moss_mat", "moss_garden", "flower_garland",
-    ];
-    const newXEdges = [0, 418, 836, 1254];
-    const newYEdges = [0, 627, 1254];
-    newBuildingFrames.forEach((buildingId, index) => {
-      const column = index % 3;
-      const row = Math.floor(index / 3);
-      newHouseTexture.add(
-        buildingId,
-        0,
-        newXEdges[column] ?? 0,
-        newYEdges[row] ?? 0,
-        (newXEdges[column + 1] ?? 1254) - (newXEdges[column] ?? 0),
-        (newYEdges[row + 1] ?? 1254) - (newYEdges[row] ?? 0),
-      );
-    });
     const session = new BrowserGameSession(window.localStorage);
     setGameSession(session);
     const state = session.initialize(import.meta.env.DEV).snapshot();

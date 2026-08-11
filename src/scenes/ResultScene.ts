@@ -3,10 +3,15 @@ import { getGameEngine } from "../core/gameContext";
 import { completionProgress } from "../systems/progression";
 import { addButton, addQuokka, addTitle, setQuokkaPose } from "../ui/components";
 import { palette } from "../ui/palette";
+import { queueAssetGroups } from "../ui/assetLoader";
 
 export class ResultScene extends Phaser.Scene {
   public constructor() {
     super("ResultScene");
+  }
+
+  public preload(): void {
+    queueAssetGroups(this, ["title"], "기록을 펼치는 중…");
   }
 
   public create(): void {

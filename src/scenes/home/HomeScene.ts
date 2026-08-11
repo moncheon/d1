@@ -27,6 +27,7 @@ import { bindAmbient, playSoundCue } from "../../ui/sound";
 import { openRecordManager } from "../../ui/recordManager";
 import { nameWithParticle, personalizedTitle } from "../../core/protagonistName";
 import { homeFeelingText } from "../../ui/homeCopy";
+import { queueAssetGroups, registerHomeFrames, releaseStoryAssets } from "../../ui/assetLoader";
 
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
@@ -76,7 +77,13 @@ export class HomeScene extends Phaser.Scene {
     this.anchorObjects.clear();
   }
 
+  public preload(): void {
+    queueAssetGroups(this, ["home"], "덤불집을 돌보는 중…");
+  }
+
   public create(): void {
+    registerHomeFrames(this);
+    releaseStoryAssets(this);
     this.cameras.main.setBackgroundColor("#4a3e32");
     this.drawBackground();
     this.drawHeader();

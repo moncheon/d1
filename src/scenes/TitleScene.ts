@@ -5,6 +5,7 @@ import { addButton, addQuokka, showToast } from "../ui/components";
 import { palette } from "../ui/palette";
 import { beginImportFlow, confirmRecordAction, startPlayableScene } from "../ui/recordManager";
 import { UI_FONT_FAMILY } from "../ui/typography";
+import { queueAssetGroups } from "../ui/assetLoader";
 import {
   MAX_PROTAGONIST_NAME_LENGTH,
   nameWithParticle,
@@ -26,6 +27,10 @@ export class TitleScene extends Phaser.Scene {
 
   public constructor() {
     super("TitleScene");
+  }
+
+  public preload(): void {
+    queueAssetGroups(this, ["title"], "덤불집을 살펴보는 중…");
   }
 
   public create(): void {

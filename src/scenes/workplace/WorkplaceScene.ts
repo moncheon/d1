@@ -16,6 +16,7 @@ import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 import { bindAmbient, playSoundCue } from "../../ui/sound";
 import { nameWithParticle } from "../../core/protagonistName";
+import { queueAssetGroups } from "../../ui/assetLoader";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
@@ -99,6 +100,10 @@ export class WorkplaceScene extends Phaser.Scene {
     this.startPlayerY = typeof data.playerY === "number" && Number.isFinite(data.playerY)
       ? Phaser.Math.Clamp(data.playerY, 220, 510)
       : 490;
+  }
+
+  public preload(): void {
+    queueAssetGroups(this, ["pipes"], "주변을 정리할 준비 중…");
   }
 
   public create(): void {

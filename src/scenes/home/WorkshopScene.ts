@@ -18,6 +18,7 @@ import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
 import { bindAmbient } from "../../ui/sound";
 import { personalizedTitle } from "../../core/protagonistName";
+import { queueAssetGroups } from "../../ui/assetLoader";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const items = itemsJson as unknown as ItemDefinition[];
@@ -69,6 +70,10 @@ export class WorkshopScene extends Phaser.Scene {
     this.returnPlayerX = data.returnPlayerX;
     this.returnPlayerY = data.returnPlayerY;
     this.returnSolutionId = data.returnSolutionId;
+  }
+
+  public preload(): void {
+    queueAssetGroups(this, ["title"], "작업실을 정돈하는 중…");
   }
 
   public create(): void {

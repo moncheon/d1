@@ -6,6 +6,7 @@ import { addButton, showToast } from "../ui/components";
 import { palette } from "../ui/palette";
 import { createStoryMusic, type StoryMusicController } from "../ui/storyMusic";
 import { UI_FONT_FAMILY } from "../ui/typography";
+import { queueAssetGroups } from "../ui/assetLoader";
 
 interface StorySceneData {
   episode?: number;
@@ -29,6 +30,10 @@ export class StoryScene extends Phaser.Scene {
   public init(data: StorySceneData): void {
     this.episodeIndex = Phaser.Math.Clamp(Number.isInteger(data.episode) ? data.episode! : 0, 0, introStory.length - 1);
     this.transitioning = false;
+  }
+
+  public preload(): void {
+    queueAssetGroups(this, ["story"], "지난 이야기를 펼치는 중…");
   }
 
   public create(): void {

@@ -7,6 +7,7 @@ import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guida
 import { addButton, addQuokka, addTitle } from "../../ui/components";
 import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
+import { queueAssetGroups } from "../../ui/assetLoader";
 
 const maps = mapsJson as unknown as { pipeNetwork: PipeCellDefinition[]; zones: ZoneDefinition[] };
 
@@ -33,6 +34,10 @@ export class PipeMapScene extends Phaser.Scene {
       : state.unlockedZones.at(-1);
     this.message = data.message;
     this.focusId = data.focusId;
+  }
+
+  public preload(): void {
+    queueAssetGroups(this, ["pipes"], "주변 길을 살펴보는 중…");
   }
 
   public create(): void {
