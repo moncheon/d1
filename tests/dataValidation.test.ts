@@ -105,6 +105,7 @@ describe("content data integrity", () => {
 
   it("gives every dirt type a distinct friendly cleaning interaction", () => {
     expect(new Set(dirt.map((definition) => definition.interaction))).toEqual(new Set(["sweep", "loosen", "soak"]));
+    expect(new Set(dirt.map((definition) => definition.spriteKey))).toEqual(new Set(["dirt-leaf", "dirt-grass", "dirt-mud"]));
   });
 
   it("keeps every surface reward available without a rare-only dependency", () => {

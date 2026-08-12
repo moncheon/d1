@@ -14,7 +14,7 @@ describe("asset manifest", () => {
   });
 
   it("uses WebP for the large visual groups", () => {
-    for (const group of [assetGroups.title, assetGroups.home, assetGroups.pipes]) {
+    for (const group of [assetGroups.title, assetGroups.home, assetGroups.workshop, assetGroups.pipes]) {
       for (const asset of group) {
         if (asset.kind === "audio") continue;
         expect(asset.url).toMatch(/\.webp$/);

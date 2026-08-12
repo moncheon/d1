@@ -29,6 +29,7 @@ export interface DirtDefinition {
   id: DirtTypeId;
   name: string;
   color: string;
+  spriteKey: string;
   interaction: CleanTechnique;
   rewards: RewardRange[];
   layers: DirtLayerDefinition[];

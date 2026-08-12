@@ -19,6 +19,7 @@ import { palette } from "../../ui/palette";
 import { bindAmbient } from "../../ui/sound";
 import { personalizedTitle } from "../../core/protagonistName";
 import { queueAssetGroups } from "../../ui/assetLoader";
+import { cleanerIconFrame, equipmentIconFrames, liquidIconFrames, materialIconFrames } from "../../data/visualFrames";
 
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
 const items = itemsJson as unknown as ItemDefinition[];
@@ -73,7 +74,7 @@ export class WorkshopScene extends Phaser.Scene {
   }
 
   public preload(): void {
-    queueAssetGroups(this, ["title"], "작업실을 정돈하는 중…");
+    queueAssetGroups(this, ["workshop"], "작업실을 정돈하는 중…");
   }
 
   public create(): void {
@@ -126,7 +127,7 @@ export class WorkshopScene extends Phaser.Scene {
     addTitle(this, 32, 112, "재료 가방", 18);
     items.forEach((item, index) => {
       const y = 151 + index * 28;
-      this.add.circle(39, y + 5, 6, Phaser.Display.Color.HexStringToColor(item.color).color);
+      this.add.image(39, y + 5, "material-icons", materialIconFrames[item.id] ?? 0).setDisplaySize(21, 21);
       this.add.text(52, y - 4, item.name, {
         color: item.category === "rare" ? "#f2d38b" : "#eee7d7",
         fontSize: "12px", fontFamily: '"Malgun Gothic", sans-serif',
@@ -147,7 +148,13 @@ export class WorkshopScene extends Phaser.Scene {
           ? `${liquidNames[liquidId]} +3 · 보유 ${state.preparedLiquids[liquidId]}`
           : `${liquidNames[liquidId]} · ${this.availabilityLabel(availability)}`,
         () => this.runCommand(commands.craftRecipe(recipe.id)),
-        { disabled: !availability.enabled, fill: 0x40565a, fontSize: 12, highlighted: this.focusId === recipe.id },
+        {
+          disabled: !availability.enabled,
+          fill: 0x40565a,
+          fontSize: 12,
+          highlighted: this.focusId === recipe.id,
+          icon: { texture: "liquid-icons", frame: liquidIconFrames[liquidId], size: 22 },
+        },
       );
     });
   }
@@ -165,7 +172,11 @@ export class WorkshopScene extends Phaser.Scene {
         const current = liquidIds.indexOf(ingredient);
         this.ingredients[index] = liquidIds[(current + 1) % liquidIds.length] ?? "water";
         this.scene.restart(this.restartData({ ingredients: this.ingredients }));
-      }, { fill: 0x496166, fontSize: 12 });
+      }, {
+        fill: 0x496166,
+        fontSize: 12,
+        icon: { texture: "liquid-icons", frame: liquidIconFrames[ingredient], size: 34 },
+      });
     });
     const mixAvailability = mixtureAvailability(state, this.ingredients);
     addButton(this, 470, 257, 260, 48, mixAvailability.enabled
@@ -192,15 +203,18 @@ export class WorkshopScene extends Phaser.Scene {
       const y = 330 + index * 43;
       this.add.rectangle(470, y + 14, 442, 36, discovered ? 0x4a654f : 0x293a3d, 1)
         .setStrokeStyle(1, palette.pipeLight, 0.65);
+      if (discovered) {
+        this.add.image(274, y + 14, "liquid-icons", liquidIconFrames[recipe.outputId] ?? 0).setDisplaySize(30, 30);
+      }
       const ingredients = recipe.ingredients?.map((id) => liquidNames[id]).join(" + ") ?? "";
-      this.add.text(258, y, discovered
+      this.add.text(discovered ? 294 : 258, y, discovered
         ? `${recipe.name} · ${ingredients}\n${recipe.effect ?? "깊은 오염 제거"}`
         : `미발견 · ${recipe.hint ?? "오염 흔적을 관찰하세요."}`, {
         color: discovered ? "#e8f2dc" : "#aebfba",
         fontSize: "12px",
         lineSpacing: 1,
         fontFamily: '"Malgun Gothic", sans-serif',
-        wordWrap: { width: 418 },
+        wordWrap: { width: discovered ? 380 : 418 },
       });
     });
   }
@@ -209,6 +223,7 @@ export class WorkshopScene extends Phaser.Scene {
     const state = getGameEngine().getState();
     addPanel(this, 720, 96, 286, 462, palette.panel, 0.91);
     addTitle(this, 736, 112, `청소기 ${state.cleanerLevel}단계`, 18);
+    this.add.image(973, 132, "equipment-icons", cleanerIconFrame(state.cleanerLevel)).setDisplaySize(54, 54);
     const nextUpgrade = recipes.find(
       (recipe) => recipe.kind === "cleaner_upgrade" && recipe.cleanerLevel === state.cleanerLevel + 1,
     );
@@ -222,6 +237,9 @@ export class WorkshopScene extends Phaser.Scene {
       fill: palette.clean,
       fontSize: 12,
       highlighted: Boolean(nextUpgrade && this.focusId === nextUpgrade.id),
+      icon: nextUpgrade?.cleanerLevel
+        ? { texture: "equipment-icons", frame: cleanerIconFrame(nextUpgrade.cleanerLevel), size: 38 }
+        : undefined,
     });
     this.add.text(736, 211, "액세서리 · 한 번에 하나 장착", {
       color: "#b8cbc6", fontSize: "12px", fontStyle: "bold", fontFamily: '"Malgun Gothic", sans-serif',
@@ -240,6 +258,7 @@ export class WorkshopScene extends Phaser.Scene {
         disabled: !availability.enabled,
         fontSize: 12,
         highlighted: this.focusId === accessory.id,
+        icon: { texture: "equipment-icons", frame: equipmentIconFrames[accessory.id] ?? 0, size: 48 },
       });
     });
     this.add.text(736, 500, "4층은 알맞은 장비와 세정액이 모두 필요해요.", {

@@ -17,6 +17,7 @@ import { palette } from "../../ui/palette";
 import { bindAmbient, playSoundCue } from "../../ui/sound";
 import { nameWithParticle } from "../../core/protagonistName";
 import { queueAssetGroups } from "../../ui/assetLoader";
+import { dirtVisualFrame, liquidIconFrames } from "../../data/visualFrames";
 
 const dirtDefinitions = dirtJson as unknown as DirtDefinition[];
 const zones = (mapsJson as unknown as { zones: ZoneDefinition[] }).zones;
@@ -44,8 +45,8 @@ interface WorkplaceSceneData {
 
 interface DirtTargetView {
   container: Phaser.GameObjects.Container;
-  blob1: Phaser.GameObjects.Arc;
-  blob2: Phaser.GameObjects.Arc;
+  shadow: Phaser.GameObjects.Ellipse;
+  sprite: Phaser.GameObjects.Sprite;
   sparkle: Phaser.GameObjects.Text;
   label: Phaser.GameObjects.Text;
 }
@@ -217,7 +218,13 @@ export class WorkplaceScene extends Phaser.Scene {
         ? `${selectedRecipe?.name ?? "세정액"} · ${selectedAmount}`
         : availableCount > 0 ? `세정액 고르기 · ${availableCount}종` : "세정액 만들기 →",
       () => this.openSolutionMenu(),
-      { fill: availableCount > 0 || this.selectedSolutionId ? 0x40565a : palette.warmDark, fontSize: 12 },
+      {
+        fill: availableCount > 0 || this.selectedSolutionId ? 0x40565a : palette.warmDark,
+        fontSize: 12,
+        icon: this.selectedSolutionId
+          ? { texture: "liquid-icons", frame: liquidIconFrames[this.selectedSolutionId] ?? 0, size: 34 }
+          : undefined,
+      },
     );
     addButton(this, 920, 43, 160, 50, "← 집으로", () => {
       this.scene.start("HomeScene");
@@ -249,7 +256,6 @@ export class WorkplaceScene extends Phaser.Scene {
       const maxLayer = Math.max(1, ...dirt.layers.map((layer) => layer.level));
       const fullyCleaned = (targetState?.deepestLayer ?? 0) >= maxLayer;
       const nextLayer = nextDirtLayer(getGameEngine().snapshot(), this.zoneId, target.id);
-      const color = Phaser.Display.Color.HexStringToColor(dirt.color).color;
       if (this.focusId === target.id) {
         const scent = this.add.ellipse(target.x, target.y + 5, 118, 86, 0xf4df9b, 0.08)
           .setStrokeStyle(3, 0xf4df9b, 0.9)
@@ -271,10 +277,10 @@ export class WorkplaceScene extends Phaser.Scene {
           ease: "Sine.InOut",
         });
       }
-      const shadow = this.add.ellipse(0, 15, 72, 27, 0x101718, 0.32);
-      const blobAlpha = fullyCleaned ? 0.18 : cleaned ? 0.58 : 1;
-      const blob1 = this.add.circle(-15, 1, 23, cleaned ? palette.clean : color, blobAlpha);
-      const blob2 = this.add.circle(13, 3, 27, cleaned ? palette.clean : color, blobAlpha);
+      const shadow = this.add.ellipse(0, 22, 76, 24, 0x101718, fullyCleaned ? 0.12 : 0.32);
+      const sprite = this.add.sprite(0, -2, dirt.spriteKey, dirtVisualFrame(targetState?.deepestLayer))
+        .setDisplaySize(108, 108)
+        .setAlpha(fullyCleaned ? 0 : 1);
       const sparkle = this.add.text(0, -3, cleaned ? (fullyCleaned ? "✓" : `${targetState?.deepestLayer ?? 1}`) : "", {
         color: "#c9f1df",
         fontSize: "20px",
@@ -282,7 +288,7 @@ export class WorkplaceScene extends Phaser.Scene {
       }).setOrigin(0.5);
       const rewardName = items.find((item) => item.id === dirt.rewards[0]?.itemId)?.name;
       const labelText = fullyCleaned ? "완전 청소" : cleaned ? `${nextLayer?.name ?? "깊은 층"}` : `${dirt.name}${rewardName ? ` · ${rewardName}` : ""}`;
-      const label = this.add.text(0, 35, labelText, {
+      const label = this.add.text(0, 53, labelText, {
         color: cleaned ? "#b8d9ce" : "#f3e8d1",
         fontSize: "12px",
         fontStyle: "bold",
@@ -290,9 +296,9 @@ export class WorkplaceScene extends Phaser.Scene {
         align: "center",
         wordWrap: { width: 100 },
       }).setOrigin(0.5);
-      const container = this.add.container(target.x, target.y, [shadow, blob1, blob2, sparkle, label]);
-      container.setSize(100, 72).setDepth(10);
-      this.targetViews.set(target.id, { container, blob1, blob2, sparkle, label });
+      const container = this.add.container(target.x, target.y, [shadow, sprite, sparkle, label]);
+      container.setSize(112, 104).setDepth(10);
+      this.targetViews.set(target.id, { container, shadow, sprite, sparkle, label });
       if (!fullyCleaned) {
         container.setInteractive({ useHandCursor: true });
         container.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
@@ -581,10 +587,10 @@ export class WorkplaceScene extends Phaser.Scene {
     }
     if (view) {
       this.tweens.add({
-        targets: [view.blob1, view.blob2],
+        targets: view.sprite,
         scaleX: { from: 1, to: 0.72 },
         scaleY: { from: 1, to: 0.82 },
-        alpha: { from: view.blob1.alpha, to: 0.3 },
+        alpha: { from: view.sprite.alpha, to: 0.28 },
         duration: 560,
         ease: "Sine.InOut",
       });
@@ -615,8 +621,8 @@ export class WorkplaceScene extends Phaser.Scene {
     const maxLayer = Math.max(1, ...dirt.layers.map((layer) => layer.level));
     const fullyCleaned = targetState.deepestLayer >= maxLayer;
     const nextLayer = nextDirtLayer(getGameEngine().snapshot(), this.zoneId, target.id);
-    view.blob1.setFillStyle(palette.clean).setScale(1).setAlpha(fullyCleaned ? 0.14 : 0.5);
-    view.blob2.setFillStyle(palette.clean).setScale(1).setAlpha(fullyCleaned ? 0.14 : 0.5);
+    view.sprite.setFrame(dirtVisualFrame(targetState.deepestLayer)).setScale(1).setAlpha(fullyCleaned ? 0 : 1);
+    view.shadow.setAlpha(fullyCleaned ? 0.12 : 0.32);
     view.sparkle.setText(fullyCleaned ? "✓" : `${targetState.deepestLayer}`);
     view.label.setText(fullyCleaned ? "완전 청소" : nextLayer?.name ?? "깊은 층");
     if (fullyCleaned) view.container.disableInteractive();
@@ -672,7 +678,12 @@ export class WorkplaceScene extends Phaser.Scene {
       const button = addButton(this, 512, top + 119 + index * 48, 438, 38,
         `${solution.name} · 남은 양 ${solution.amount}`,
         () => this.scene.restart(this.restartData({ solutionId: solution.id })),
-        { fill: palette.clean, fontSize: 12, highlighted: this.selectedSolutionId === solution.id },
+        {
+          fill: palette.clean,
+          fontSize: 12,
+          highlighted: this.selectedSolutionId === solution.id,
+          icon: { texture: "liquid-icons", frame: liquidIconFrames[solution.id] ?? 0, size: 28 },
+        },
       ).setDepth(902);
       modalObjects.push(button);
     });

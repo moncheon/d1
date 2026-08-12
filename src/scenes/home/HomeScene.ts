@@ -18,7 +18,7 @@ import type {
 import { shouldAutoSleepAtHome } from "../../systems/building";
 import { activityForHappiness } from "../../systems/progression";
 import { getQuokkaGuidance, type GuidanceDestination } from "../../systems/guidance";
-import { addButton, addPanel, addQuokka, addTitle, showToast } from "../../ui/components";
+import { addButton, addPanel, addQuokka, addTitle, playQuokkaSleep, showToast } from "../../ui/components";
 import { setQuokkaPose } from "../../ui/components";
 import { addQuokkaGuide } from "../../ui/quokkaGuide";
 import { palette } from "../../ui/palette";
@@ -28,6 +28,7 @@ import { openRecordManager } from "../../ui/recordManager";
 import { nameWithParticle, personalizedTitle } from "../../core/protagonistName";
 import { homeFeelingText } from "../../ui/homeCopy";
 import { queueAssetGroups, registerHomeFrames, releaseStoryAssets } from "../../ui/assetLoader";
+import { cleanerIconFrame, equipmentIconFrames, materialIconFrames } from "../../data/visualFrames";
 
 const buildings = buildingsJson as unknown as BuildingDefinition[];
 const accessories = accessoriesJson as unknown as AccessoryDefinition[];
@@ -168,7 +169,7 @@ export class HomeScene extends Phaser.Scene {
       .slice(0, 8);
     visibleItems.forEach((item, index) => {
       const y = 181 + index * 28;
-      this.add.circle(43, y + 5, 7, Phaser.Display.Color.HexStringToColor(item.color).color);
+      this.add.image(43, y + 5, "material-icons", materialIconFrames[item.id] ?? 0).setDisplaySize(22, 22);
       this.add.text(58, y - 5, item.name, {
         color: item.category === "rare" ? "#f2d38b" : "#f1eadb",
         fontSize: "13px",
@@ -257,7 +258,8 @@ export class HomeScene extends Phaser.Scene {
     const state = getGameEngine().getState();
     addPanel(this, 768, 112, 240, 365, palette.panel, 0.88);
     addTitle(this, 786, 128, "작은 작업대", 18);
-    this.add.text(786, 162, `청소기 ${state.cleanerLevel}단계`, {
+    this.add.image(805, 177, "equipment-icons", cleanerIconFrame(state.cleanerLevel)).setDisplaySize(46, 46);
+    this.add.text(834, 162, `청소기 ${state.cleanerLevel}단계`, {
       color: "#b9ddd2",
       fontSize: "15px",
       fontStyle: "bold",
@@ -267,7 +269,7 @@ export class HomeScene extends Phaser.Scene {
     const nextUpgrade = recipes.find(
       (recipe) => recipe.kind === "cleaner_upgrade" && recipe.cleanerLevel === state.cleanerLevel + 1,
     );
-    this.add.text(786, 198, nextUpgrade ? `다음 성장: ${nextUpgrade.name}` : "청소기 최고 단계 달성", {
+    this.add.text(834, 198, nextUpgrade ? `다음 성장: ${nextUpgrade.name}` : "청소기 최고 단계 달성", {
       color: "#b9ddd2",
       fontSize: "13px",
       fontFamily: '"Malgun Gothic", sans-serif',
@@ -286,6 +288,9 @@ export class HomeScene extends Phaser.Scene {
       lineSpacing: 6,
       fontFamily: '"Malgun Gothic", sans-serif',
     });
+    if (equippedId && equipmentIconFrames[equippedId] !== undefined) {
+      this.add.image(972, 276, "equipment-icons", equipmentIconFrames[equippedId]).setDisplaySize(34, 34);
+    }
 
     const evening = state.dayPhase === "evening";
     addButton(this, 888, 340, 200, 58, evening ? "작업대도 쉬는 중" : "작업실 열기\n장비 · 배합 · 수첩", () => {
@@ -314,7 +319,7 @@ export class HomeScene extends Phaser.Scene {
     }
     if (state.dayPhase === "evening" && rest) {
       this.quokka?.setPosition(rest.x + 34, rest.y + 12);
-      setQuokkaPose(this.quokka, 11);
+      setQuokkaPose(this.quokka, 10);
     } else if (garden) {
       this.quokka?.setPosition(garden.x - 42, garden.y + 20);
       setQuokkaPose(this.quokka, 2);
@@ -618,18 +623,19 @@ export class HomeScene extends Phaser.Scene {
       duration: 650,
       ease: "Sine.InOut",
       onComplete: () => {
-        this.tweens.add({ targets: this.quokka, angle: 82, scaleY: 0.82, duration: 480 });
-        const dark = this.add.rectangle(512, 288, 1024, 576, 0x0f1719, 0).setDepth(2000);
-        this.tweens.add({
-          targets: dark,
-          alpha: 1,
-          delay: 350,
-          duration: 700,
-          onComplete: () => {
-            getGameEngine().dispatch(commands.endDay());
-            if (getGameEngine().getState().gameCompleted) this.scene.start("ResultScene");
-            else this.scene.restart({ wokeUp: true, recentEventType: "DAY_ENDED" });
-          },
+        playQuokkaSleep(this, this.quokka!, () => {
+          const dark = this.add.rectangle(512, 288, 1024, 576, 0x0f1719, 0).setDepth(2000);
+          this.tweens.add({
+            targets: dark,
+            alpha: 1,
+            delay: 350,
+            duration: 700,
+            onComplete: () => {
+              getGameEngine().dispatch(commands.endDay());
+              if (getGameEngine().getState().gameCompleted) this.scene.start("ResultScene");
+              else this.scene.restart({ wokeUp: true, recentEventType: "DAY_ENDED" });
+            },
+          });
         });
       },
     });

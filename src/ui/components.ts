@@ -13,6 +13,7 @@ export interface ButtonOptions {
   align?: "center" | "left";
   highlighted?: boolean;
   playSound?: boolean;
+  icon?: { texture: string; frame?: string | number; size?: number };
 }
 
 export function addPanel(
@@ -49,18 +50,26 @@ export function addButton(
   const highlight = scene.add
     .rectangle(0, 0, width + 8, height + 8, 0xffffff, 0)
     .setStrokeStyle(3, 0xf6edd8, options.highlighted ? 0.9 : 0);
+  const iconSize = options.icon?.size ?? Math.min(34, height - 10);
+  const leftAligned = options.align === "left" || Boolean(options.icon);
+  const iconSpace = options.icon ? iconSize + 12 : 0;
   const text = scene.add
-    .text(options.align === "left" ? -width / 2 + 12 : 0, 0, label, {
+    .text(leftAligned ? -width / 2 + 12 + iconSpace : 0, 0, label, {
       color: options.disabled ? "#738181" : palette.cream,
       fontFamily: UI_FONT_FAMILY,
       fontSize: `${Math.max(typography.caption, options.fontSize ?? typography.button)}px`,
       fontStyle: "bold",
-      align: options.align ?? "center",
-      wordWrap: { width: width - 20 },
+      align: leftAligned ? "left" : "center",
+      wordWrap: { width: width - 20 - iconSpace },
     })
-    .setOrigin(options.align === "left" ? 0 : 0.5, 0.5)
+    .setOrigin(leftAligned ? 0 : 0.5, 0.5)
     .setResolution(2);
-  const container = scene.add.container(x, y, [highlight, background, text]);
+  const icon = options.icon
+    ? scene.add.image(-width / 2 + 10 + iconSize / 2, 0, options.icon.texture, options.icon.frame ?? 0)
+      .setDisplaySize(iconSize, iconSize)
+      .setAlpha(options.disabled ? 0.38 : 1)
+    : undefined;
+  const container = scene.add.container(x, y, icon ? [highlight, background, icon, text] : [highlight, background, text]);
   container.setSize(width, height);
 
   if (!options.disabled) {
@@ -139,6 +148,7 @@ export function addQuokka(scene: Phaser.Scene, x: number, y: number): Phaser.Gam
     const sprite = scene.add.sprite(0, 0, "quokka-poses", 0).setDisplaySize(112, 111);
     const container = scene.add.container(x, y, [shadow, sprite]);
     container.setData("poseSprite", sprite);
+    container.setData("poseShadow", shadow);
     return container;
   }
   const shadow = scene.add.ellipse(0, 22, 54, 18, 0x101719, 0.32);
@@ -168,6 +178,57 @@ export function addQuokka(scene: Phaser.Scene, x: number, y: number): Phaser.Gam
 export function setQuokkaPose(quokka: Phaser.GameObjects.Container | undefined, frame: number): void {
   const sprite = quokka?.getData("poseSprite") as Phaser.GameObjects.Sprite | undefined;
   if (sprite) sprite.setFrame(Phaser.Math.Clamp(frame, 0, 11));
+}
+
+export function playQuokkaSleep(
+  scene: Phaser.Scene,
+  quokka: Phaser.GameObjects.Container,
+  onSettled: () => void,
+): void {
+  const sprite = quokka.getData("poseSprite") as Phaser.GameObjects.Sprite | undefined;
+  const shadow = quokka.getData("poseShadow") as Phaser.GameObjects.Ellipse | undefined;
+  if (!sprite || !scene.textures.exists("quokka-sleep")) {
+    setQuokkaPose(quokka, 8);
+    onSettled();
+    return;
+  }
+
+  scene.tweens.killTweensOf(quokka);
+  quokka.setAngle(0);
+  sprite.setTexture("quokka-sleep", 0).setDisplaySize(112, 111);
+  shadow?.setPosition(0, 31).setDisplaySize(78, 14).setAlpha(0.28);
+  if (getGameEngine().getState().preferences.reducedMotion) {
+    sprite.setFrame(3);
+    onSettled();
+    return;
+  }
+
+  const animationKey = "quokka-sleep-transition";
+  if (!scene.anims.exists(animationKey)) {
+    scene.anims.create({
+      key: animationKey,
+      frames: scene.anims.generateFrameNumbers("quokka-sleep", { start: 0, end: 3 }),
+      frameRate: 5,
+      repeat: 0,
+    });
+  }
+  sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+    sprite.setFrame(3);
+    const baseScaleY = sprite.scaleY;
+    const breathing = scene.tweens.add({
+      targets: sprite,
+      scaleY: baseScaleY * 0.985,
+      y: sprite.y + 1,
+      duration: 900,
+      ease: "Sine.InOut",
+      yoyo: true,
+      repeat: -1,
+    });
+    quokka.setData("sleepTween", breathing);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => breathing.stop());
+    onSettled();
+  });
+  sprite.play(animationKey);
 }
 
 export function playQuokkaReaction(

@@ -1,4 +1,4 @@
-export type AssetGroup = "title" | "story" | "home" | "pipes";
+export type AssetGroup = "title" | "story" | "home" | "workshop" | "pipes";
 
 export type AssetDefinition =
   | { kind: "image"; key: string; url: string }
@@ -19,6 +19,34 @@ const quokkaPoses: AssetDefinition = {
   frameHeight: 362,
 };
 
+const quokkaSleep: AssetDefinition = {
+  kind: "spritesheet",
+  key: "quokka-sleep",
+  url: "assets/visuals/quokka-sleep.webp",
+  frameWidth: 362,
+  frameHeight: 362,
+};
+
+const materialIcons: AssetDefinition = {
+  kind: "spritesheet", key: "material-icons", url: "assets/visuals/material-icons.webp", frameWidth: 64, frameHeight: 64,
+};
+
+const liquidIcons: AssetDefinition = {
+  kind: "spritesheet", key: "liquid-icons", url: "assets/visuals/liquid-icons.webp", frameWidth: 64, frameHeight: 64,
+};
+
+const equipmentIcons: AssetDefinition = {
+  kind: "spritesheet", key: "equipment-icons", url: "assets/visuals/equipment-icons.webp", frameWidth: 96, frameHeight: 96,
+};
+
+const dirtSprites: readonly AssetDefinition[] = ["leaf", "grass", "mud"].map((name) => ({
+  kind: "spritesheet" as const,
+  key: `dirt-${name}`,
+  url: `assets/visuals/dirt-${name}.webp`,
+  frameWidth: 160,
+  frameHeight: 160,
+}));
+
 export const assetGroups: Readonly<Record<AssetGroup, readonly AssetDefinition[]>> = {
   title: [homeDiorama, quokkaPoses],
   story: [
@@ -32,13 +60,19 @@ export const assetGroups: Readonly<Record<AssetGroup, readonly AssetDefinition[]
   home: [
     homeDiorama,
     quokkaPoses,
+    quokkaSleep,
+    materialIcons,
+    equipmentIcons,
     { kind: "image", key: "house-objects", url: "assets/visuals/house-objects.webp" },
     { kind: "image", key: "home-shell-base", url: "assets/visuals/home-shell-base.webp" },
     { kind: "image", key: "home-dome-back", url: "assets/visuals/home-dome-back.webp" },
     { kind: "image", key: "home-items-new", url: "assets/visuals/home-items-new.webp" },
   ],
+  workshop: [homeDiorama, quokkaPoses, materialIcons, liquidIcons, equipmentIcons],
   pipes: [
     quokkaPoses,
+    liquidIcons,
+    ...dirtSprites,
     { kind: "image", key: "pipe-organic", url: "assets/visuals/pipe-organic.webp" },
     { kind: "image", key: "pipe-mineral", url: "assets/visuals/pipe-mineral.webp" },
   ],
